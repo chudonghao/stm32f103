@@ -17,7 +17,7 @@ namespace cdh{
         /// \param size
         /// \param count
         /// \return  number of data successfully read
-        virtual std::size_t read(void * ptr, std::size_t size, std::size_t count) =0;
+        virtual std::size_t read(unsigned char *ptr, std::size_t size, std::size_t count) =0;
         /// write data to device
         /// \param ptr
         /// \param size

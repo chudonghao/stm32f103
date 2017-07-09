@@ -14,7 +14,7 @@ namespace cdh{
 
         virtual driver_t *open();
 
-        virtual std::size_t read(void *ptr, std::size_t size, std::size_t count);
+        virtual std::size_t read(unsigned char *ptr, std::size_t size, std::size_t count);
 
         virtual std::size_t write(const unsigned char *ptr, std::size_t size, std::size_t count);
 

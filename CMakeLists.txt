@@ -10,4 +10,4 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/RTE/Device/STM32F103RC
         ${PROJECT_SOURCE_DIR}/RTE
         ${Keil_v5}/ARM/ARMCC/include)
-add_executable(keil main.cpp usart1.h usart1.cpp driver.h)
+add_executable(keil main.cpp usart1.h usart1.cpp driver.h led.cpp led.h)
