@@ -1,20 +1,19 @@
 #include <stm32f10x_conf.h>
 #include "usart1.h"
-#include "led.h"
-
-#define CDH_USART1_BUFFER_LENGTH 30
-static char usart1_buffer[CDH_USART1_BUFFER_LENGTH] = {0};
+#include <cstddef>
+#ifndef CDH_USART1_DATA_BUFFER_LENGTH
+#define CDH_USART1_DATA_BUFFER_LENGTH 128
+#endif
+static char usart1_data_buffer[CDH_USART1_DATA_BUFFER_LENGTH] = {0};
 static unsigned char usart1_buffer_first = 0;
 static unsigned char usart1_buffer_end = 0;
 
-static cdh::usart1_t usart1;
-static cdh::led1_t led1;
 extern "C" {
 void USART1_IRQHandler(void) {
     if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
-        if(usart1_buffer_end == CDH_USART1_BUFFER_LENGTH)
+        if (usart1_buffer_end == CDH_USART1_DATA_BUFFER_LENGTH)
             usart1_buffer_end = 0;
-        usart1_buffer[usart1_buffer_end++] = USART_ReceiveData(USART1);
+        usart1_data_buffer[usart1_buffer_end++] = USART_ReceiveData(USART1);
     }
 }
 
@@ -22,13 +21,12 @@ void USART1_IRQHandler(void) {
 namespace cdh {
     bool usart1_t::inited = false;
 
-    driver_t *usart1_t::open() {
+    usart1_t *usart1_t::open() {
         position = 0;
 
         if (inited)
             return this;
 
-        NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
         RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_USART1, ENABLE);
 
         GPIO_InitTypeDef GPIO_InitStructure;
@@ -51,6 +49,7 @@ namespace cdh {
         USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
         USART_Init(USART1, &USART_InitStructure);
 
+        NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
         NVIC_InitTypeDef NVIC_InitStructure;
         NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
         NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
@@ -66,14 +65,14 @@ namespace cdh {
     }
 
     std::size_t usart1_t::read(unsigned char *ptr, std::size_t size, std::size_t count) {
-        if(!count)
+        if (!count)
             return 0;
         long int max_length = size * count;
-				int i = 0;
-        for(;i<max_length&&usart1_buffer_first != usart1_buffer_end;++i){
-            if(usart1_buffer_first == CDH_USART1_BUFFER_LENGTH)
+        int i = 0;
+        for (; i < max_length && usart1_buffer_first != usart1_buffer_end; ++i) {
+            if (usart1_buffer_first == CDH_USART1_DATA_BUFFER_LENGTH)
                 usart1_buffer_first = 0;
-            ptr[i] = usart1_buffer[usart1_buffer_first++];
+            ptr[i] = usart1_data_buffer[usart1_buffer_first++];
         }
         return i;
     }
@@ -96,5 +95,22 @@ namespace cdh {
 
     int usart1_t::close() {
         return 0;
+    }
+
+    bool usart1_t::have_data_to_read() {
+        if (usart1_buffer_first != usart1_buffer_end)
+            return true;
+        return false;
+    }
+
+    void usart1_t::trim_buffer_head() {
+        while(usart1_buffer_first!=usart1_buffer_end){
+            if(usart1_buffer_first==CDH_USART1_DATA_BUFFER_LENGTH)
+                usart1_buffer_first =0;
+            unsigned char ch = usart1_data_buffer[usart1_buffer_first];
+            if(ch == '\n'||ch == ' ' || ch == '\r')
+                ++usart1_buffer_first;
+            else break;
+        }
     }
 }

@@ -1,28 +1,28 @@
 #ifndef CDH_USART1_H
 #define CDH_USART1_H
-
-#include "driver.h"
-
-namespace cdh{
-    class usart1_t :public driver_t{
+#include <cstddef>
+namespace cdh {
+    class usart1_t {
     private:
         static bool inited;
     private:
         long int position;
     public:
-        virtual ~usart1_t() {}
 
-        virtual driver_t *open();
+        usart1_t *open();
 
-        virtual std::size_t read(unsigned char *ptr, std::size_t size, std::size_t count);
+        std::size_t read(unsigned char *ptr, std::size_t size, std::size_t count);
 
-        virtual std::size_t write(const unsigned char *ptr, std::size_t size, std::size_t count);
+        std::size_t write(const unsigned char *ptr, std::size_t size, std::size_t count);
 
-        virtual int seek(long int offset);
+        int seek(long int offset);
 
-        virtual long tell();
+        long tell();
 
-        virtual int close();
+        int close();
+
+        bool have_data_to_read();
+        void trim_buffer_head();
     };
 }
 

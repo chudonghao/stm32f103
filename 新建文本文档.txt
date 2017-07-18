@@ -1,0 +1,3 @@
+set_current_position 390 693
+move_box_to 400 700
+draw_circle 400 700 250
