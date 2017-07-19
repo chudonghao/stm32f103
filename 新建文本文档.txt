@@ -1,3 +1,5 @@
 set_current_position 390 693
 move_box_to 400 700
 draw_circle 400 700 250
+
+1:gnd 2:vcc 3:lsb 4:dir 5:z

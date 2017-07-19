@@ -7,11 +7,14 @@
 
 namespace cdh{
     class led1_t{
-        static bool inited;
+        static led1_t*led1;
+        bool m_on;
+        led1_t():m_on(false){}
     public:
-        led1_t * open();
+        static led1_t * open();
         void on();
         void off();
+        bool is_on();
         int close();
     };
 }

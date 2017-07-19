@@ -3,7 +3,7 @@ project(cdh)
 
 set(Keil_v5 D:/MDK5)
 #set(Keil_v5  /home/chudonghao/Keil/Keil_v5)
-
+add_definitions(USE_STDPERIPH_DRIVER ARM_MATH_CM3 STM32F10X_HD)
 include_directories(
 #        ${Keil_v5}/ARM/Pack/ARM/CMSIS/4.2.0/CMSIS/Include
         ${Keil_v5}/ARM/Pack/ARM/CMSIS/5.0.1/CMSIS/Include
@@ -35,4 +35,4 @@ add_executable(cdh
         infra_red.cpp
         RTE/CMSIS/RTX_Config.c
         RTE/CMSIS/RTX_Config.h
-        infra_red.h)
+        infra_red.h encoder.cpp encoder.h step_motor.cpp step_motor.h)

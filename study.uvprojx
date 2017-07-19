@@ -363,7 +363,7 @@
             <useXO>0</useXO>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>USE_STDPERIPH_DRIVER,ARM_MATH_CM3</Define>
+              <Define>USE_STDPERIPH_DRIVER,ARM_MATH_CM3,STM32F10X_HD</Define>
               <Undefine></Undefine>
               <IncludePath>..\study</IncludePath>
             </VariousControls>
@@ -409,11 +409,6 @@
           <GroupName>source</GroupName>
           <Files>
             <File>
-              <FileName>driver.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\driver.h</FilePath>
-            </File>
-            <File>
               <FileName>usart1.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>.\usart1.cpp</FilePath>
@@ -434,49 +429,29 @@
               <FilePath>.\led.cpp</FilePath>
             </File>
             <File>
-              <FileName>step_motor_couple.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>.\step_motor_couple.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>step_motor_couple.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\step_motor_couple.h</FilePath>
-            </File>
-            <File>
-              <FileName>box.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\box.h</FilePath>
-            </File>
-            <File>
-              <FileName>box.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>.\box.cpp</FilePath>
-            </File>
-            <File>
               <FileName>main.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>.\main.cpp</FilePath>
             </File>
             <File>
-              <FileName>point_array.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\point_array.h</FilePath>
-            </File>
-            <File>
-              <FileName>point_array.cpp</FileName>
+              <FileName>encoder.cpp</FileName>
               <FileType>8</FileType>
-              <FilePath>.\point_array.cpp</FilePath>
+              <FilePath>.\encoder.cpp</FilePath>
             </File>
             <File>
-              <FileName>infra_red.h</FileName>
+              <FileName>encoder.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\infra_red.h</FilePath>
+              <FilePath>.\encoder.h</FilePath>
             </File>
             <File>
-              <FileName>infra_red.cpp</FileName>
+              <FileName>step_motor.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\step_motor.h</FilePath>
+            </File>
+            <File>
+              <FileName>step_motor.cpp</FileName>
               <FileType>8</FileType>
-              <FilePath>.\infra_red.cpp</FilePath>
+              <FilePath>.\step_motor.cpp</FilePath>
             </File>
           </Files>
         </Group>
@@ -525,6 +500,12 @@
         </targetInfos>
       </component>
       <component Cclass="Device" Cgroup="Startup" Cvendor="Keil" Cversion="1.0.0" condition="STM32F1xx CMSIS Device">
+        <package name="STM32F1xx_DFP" schemaVersion="1.2" url="http://www.keil.com/pack/" vendor="Keil" version="1.0.5"/>
+        <targetInfos>
+          <targetInfo name="study"/>
+        </targetInfos>
+      </component>
+      <component Cclass="Device" Cgroup="StdPeriph Drivers" Csub="EXTI" Cvendor="Keil" Cversion="3.5.0" condition="STM32F1 STDPERIPH">
         <package name="STM32F1xx_DFP" schemaVersion="1.2" url="http://www.keil.com/pack/" vendor="Keil" version="1.0.5"/>
         <targetInfos>
           <targetInfo name="study"/>
