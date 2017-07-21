@@ -18,6 +18,11 @@ include_directories(
         ${Keil_v5}/ARM/ARMCC/include
 )
 add_executable(cdh
+        third_party/lcd.c
+        third_party/lcd.h
+        third_party/delay.c
+        third_party/delay.h
+        third_party/FONT.H
         main.cpp
         usart1.h
         usart1.cpp
@@ -35,4 +40,4 @@ add_executable(cdh
         infra_red.cpp
         RTE/CMSIS/RTX_Config.c
         RTE/CMSIS/RTX_Config.h
-        infra_red.h encoder.cpp encoder.h step_motor.cpp step_motor.h usart2.cpp usart2.h mpu9250.cpp mpu9250.h vec2.cpp vec2.h)
+        infra_red.h encoder.cpp encoder.h step_motor.cpp step_motor.h usart2.cpp usart2.h mpu9250.cpp mpu9250.h vec2.cpp vec2.h lcd.cpp lcd.h)

@@ -4,12 +4,6 @@
 
 #include "encoder.h"
 #include <stm32f10x_conf.h>
-#include <ctime>
-#include <cstdio>
-#include <cstring>
-#include <core_cm3.h>
-#include <rtx_evr.h>
-#include "led.h"
 #include "vec2.h"
 
 using namespace cdh;
@@ -46,17 +40,21 @@ namespace cdh {
 
     encoder_t *encoder_t::open() {
         if (encoder)return encoder;
-        //pc4 pc5
-        RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOC, ENABLE);
+        //pc4 pa5
+        RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOC| RCC_APB2Periph_GPIOA, ENABLE);
 
         GPIO_InitTypeDef GPIO_InitStructure;
         EXTI_InitTypeDef EXTI_InitStructure;
         NVIC_InitTypeDef NVIC_InitStructure;
 
-        GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_4;
+        GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
         GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
         GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
         GPIO_Init(GPIOC, &GPIO_InitStructure);
+			  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+        GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+        GPIO_Init(GPIOA, &GPIO_InitStructure);
 
         if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_4) == Bit_SET) {
             dir = -1;
@@ -77,7 +75,7 @@ namespace cdh {
         NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0;
         NVIC_Init(&NVIC_InitStructure);
 
-        GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource5);
+        GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource5);
         EXTI_InitStructure.EXTI_Line = EXTI_Line5;
         EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
         EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
@@ -127,6 +125,6 @@ namespace cdh {
     }
 
     float encoder_t::angle() {
-        return (float) step / 512 * 2 * M_PI * 22 / 32;
+        return (float) step / 1024 * 2 * M_PI * 22 / 32;
     }
 }

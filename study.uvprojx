@@ -453,6 +453,16 @@
               <FileType>8</FileType>
               <FilePath>.\step_motor.cpp</FilePath>
             </File>
+            <File>
+              <FileName>mpu9250.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\mpu9250.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>mpu9250.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\mpu9250.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
