@@ -4,16 +4,29 @@
 
 #include "encoder.h"
 #include <stm32f10x_conf.h>
+#include <ctime>
+#include <cstdio>
+#include <cstring>
+#include <core_cm3.h>
+#include <rtx_evr.h>
 #include "led.h"
+#include "vec2.h"
 
 using namespace cdh;
+using namespace std;
+namespace {
+    static int dir = 0;
+    static int step = 0;
+//    typedef struct {
+//        time_t time;
+//        int angle;
+//    } time_angle_t;
+//    static time_angle_t time_angle[400];
+}
 
-static int dir = 0;
-static int angle = 0;
-extern "C" {
-
-void EXTI4_IRQHandler() {
+extern "C" void EXTI4_IRQHandler() {
     EXTI_ClearITPendingBit(EXTI_Line4);
+    TIM_SetCounter(TIM4, 0x0);
     if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_4) == Bit_SET) {
         dir = 1;
     } else {
@@ -21,12 +34,13 @@ void EXTI4_IRQHandler() {
     }
 }
 
-void EXTI9_5_IRQHandler() {
+extern "C" void EXTI9_5_IRQHandler() {
     EXTI_ClearITPendingBit(EXTI_Line5);
-    angle += dir;
+    step += dir;
+//    time_angle[angle+200].time = TIM_GetCounter(TIM4);
+//    time_angle[angle+200].angle = angle;
 }
 
-}
 namespace cdh {
     encoder_t *encoder_t::encoder = 0;
 
@@ -76,10 +90,43 @@ namespace cdh {
         NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x1;
         NVIC_Init(&NVIC_InitStructure);
 
+        //tim4
+        TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+        //config rcc
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+        //config tim4
+        TIM_TimeBaseStructure.TIM_Period = 60000 - 1;
+        TIM_TimeBaseStructure.TIM_Prescaler = 2400 - 1;
+        TIM_TimeBaseStructure.TIM_ClockDivision = 1 - 1;
+        TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+        TIM_ARRPreloadConfig(TIM4, ENABLE);
+        TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+        TIM_Cmd(TIM4, ENABLE);
+
         return encoder;
     }
 
     int encoder_t::value() {
-        return angle;
+        return step;
+    }
+
+    void encoder_t::test() {
+//        static int old_dir = dir;
+//        if (old_dir != dir) {
+//            for (int i = 0; i < 400; ++i) {
+//                printf("%u,", time_angle[i].time);
+//            }
+//            printf("\r\n");
+//            for (int i = 0; i < 400; ++i) {
+//                printf("%d,", time_angle[i].angle);
+//            }
+//            printf("\r\n");
+//            old_dir = dir;
+//            memset(time_angle,0, sizeof(time_angle));
+//        }
+    }
+
+    float encoder_t::angle() {
+        return (float) step / 512 * 2 * M_PI * 22 / 32;
     }
 }

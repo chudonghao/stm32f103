@@ -3,6 +3,7 @@
 //
 
 #include "step_motor.h"
+#include "vec2.h"
 #include <stm32f10x_conf.h>
 
 static int step = 0;
@@ -86,8 +87,8 @@ namespace cdh {
         TIM_Cmd(TIM3, ENABLE);
     }
 
-    void step_motor_t::step() {
-
+    int step_motor_t::map_angle_to_step(float angle) {
+        return angle / 2 / M_PI * 1600;
     }
 }
 
