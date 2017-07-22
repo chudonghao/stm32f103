@@ -72,8 +72,11 @@ namespace cdh {
 
     }
 
-    void step_motor_t::set_next_step(int next_step) {
+    void step_motor_t::set_next_step(int next_step,int p) {
         TIM_Cmd(TIM5, DISABLE);
+        if(p>=720)
+            TIM_SetAutoreload(TIM5,p);
+
         ::next_step = next_step;
         if (::next_step > ::step) {
             dir = 1;
@@ -88,7 +91,7 @@ namespace cdh {
     }
 
     int step_motor_t::map_angle_to_step(float angle) {
-        return angle / 2 / M_PI * 1600;
+        return angle / 2 / M_PI * 3200;
     }
 }
 

@@ -6,11 +6,11 @@
 #define CDH_VEC2_H
 
 #include <cmath>
-# define M_PI       3.14159265358979323846  /* pi */
-# define M_PI_2     1.57079632679489661923  /* pi/2 */
-# define M_PI_4     0.78539816339744830962  /* pi/4 */
-# define M_1_PI     0.31830988618379067154  /* 1/pi */
-# define M_2_PI     0.63661977236758134308  /* 2/pi */
+# define M_PI       3.14159265358979323846f  /* pi */
+# define M_PI_2     1.57079632679489661923f  /* pi/2 */
+# define M_PI_4     0.78539816339744830962f  /* pi/4 */
+# define M_1_PI     0.31830988618379067154f  /* 1/pi */
+# define M_2_PI     0.63661977236758134308f  /* 2/pi */
 
 namespace cdh {
     template<typename T>
@@ -72,7 +72,6 @@ namespace cdh {
     static inline float length(const vec2<T> &point1) {
         return std::sqrt(point1.x*point1.x + point1.y*point1.y);
     }
-
     template <typename T>
     static inline float angle(const vec2<T> &point1, const vec2<T> &point2){
         return std::acos(
@@ -80,6 +79,7 @@ namespace cdh {
                 / length(point1) / length(point2)
         );
     }
+
 }
 
 

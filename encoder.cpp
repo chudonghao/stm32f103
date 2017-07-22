@@ -4,24 +4,33 @@
 
 #include "encoder.h"
 #include <stm32f10x_conf.h>
+#include <cstdio>
+#include <arm_math.h>
 #include "vec2.h"
 
 using namespace cdh;
 using namespace std;
-namespace {
-    static int dir = 0;
-    static int step = 0;
-//    typedef struct {
-//        time_t time;
-//        int angle;
-//    } time_angle_t;
-//    static time_angle_t time_angle[400];
-}
+
+static int dir = 0;
+static int step = 0;
+
+static arm_fir_instance_f32 arm_fir_instance;
+static float lasted_angle[2];
+
+//extern "C" void TIM4_IRQHandler() {
+//    if (TIM_GetITStatus(TIM4, TIM_IT_Update) != RESET) {
+//        TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
+//        float angle_ = (float) step / 1024 * 2 * M_PI * 22 / 32;
+//        lasted_angle[0] = lasted_angle[1];
+//        lasted_angle[1] = angle_;
+//        arm_fir_f32(&arm_fir_instance, &angle_, &lasted_angle[1], 1);
+//        //printf("test\r\n");
+//    }
+//};
 
 extern "C" void EXTI4_IRQHandler() {
     EXTI_ClearITPendingBit(EXTI_Line4);
-    TIM_SetCounter(TIM4, 0x0);
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_4) == Bit_SET) {
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_4) != Bit_RESET) {
         dir = 1;
     } else {
         dir = -1;
@@ -31,8 +40,6 @@ extern "C" void EXTI4_IRQHandler() {
 extern "C" void EXTI9_5_IRQHandler() {
     EXTI_ClearITPendingBit(EXTI_Line5);
     step += dir;
-//    time_angle[angle+200].time = TIM_GetCounter(TIM4);
-//    time_angle[angle+200].angle = angle;
 }
 
 namespace cdh {
@@ -41,7 +48,7 @@ namespace cdh {
     encoder_t *encoder_t::open() {
         if (encoder)return encoder;
         //pc4 pa5
-        RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOC| RCC_APB2Periph_GPIOA, ENABLE);
+        RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOA, ENABLE);
 
         GPIO_InitTypeDef GPIO_InitStructure;
         EXTI_InitTypeDef EXTI_InitStructure;
@@ -51,7 +58,7 @@ namespace cdh {
         GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
         GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
         GPIO_Init(GPIOC, &GPIO_InitStructure);
-			  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+        GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
         GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
         GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
         GPIO_Init(GPIOA, &GPIO_InitStructure);
@@ -88,19 +95,39 @@ namespace cdh {
         NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x1;
         NVIC_Init(&NVIC_InitStructure);
 
-        //tim4
-        TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
-        //config rcc
-        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-        //config tim4
-        TIM_TimeBaseStructure.TIM_Period = 60000 - 1;
-        TIM_TimeBaseStructure.TIM_Prescaler = 2400 - 1;
-        TIM_TimeBaseStructure.TIM_ClockDivision = 1 - 1;
-        TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-        TIM_ARRPreloadConfig(TIM4, ENABLE);
-        TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
-        TIM_Cmd(TIM4, ENABLE);
+//        //tim4
+//        TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+//        //config rcc
+//        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+//        //config tim4
+//        TIM_TimeBaseStructure.TIM_Period = 36000 - 1;
+//        TIM_TimeBaseStructure.TIM_Prescaler = 2 - 1;
+//        TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+//        TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+//        TIM_ARRPreloadConfig(TIM4, ENABLE);
+//        TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
 
+//        TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
+//        NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
+//        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+//        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x3;
+//        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0;
+//        NVIC_Init(&NVIC_InitStructure);
+
+//        TIM_Cmd(TIM4, ENABLE);
+
+//#define BLOCK_SIZE 50
+//#define NUM_TAPS 30
+//        static float coeffs[NUM_TAPS] = {
+//                0.0005415165797, 0.001727426774, 0.003113061655, 0.003883380443, 0.002264012117,
+//                -0.003352924949, -0.01260423567, -0.0218139533, -0.02428940125, -0.01267496031,
+//                0.01740843058, 0.06416342407, 0.11868231, 0.1671814919, 0.1957704276,
+//                0.1957704276, 0.1671814919, 0.11868231, 0.06416342407, 0.01740843058,
+//                -0.01267496031, -0.02428940125, -0.0218139533, -0.01260423567, -0.003352924949,
+//                0.002264012117, 0.003883380443, 0.003113061655, 0.001727426774, 0.0005415165797
+//        };
+//        static float state[BLOCK_SIZE + NUM_TAPS - 1];
+//        arm_fir_init_f32(&arm_fir_instance, NUM_TAPS, coeffs, state, BLOCK_SIZE);
         return encoder;
     }
 
@@ -109,22 +136,45 @@ namespace cdh {
     }
 
     void encoder_t::test() {
-//        static int old_dir = dir;
-//        if (old_dir != dir) {
-//            for (int i = 0; i < 400; ++i) {
-//                printf("%u,", time_angle[i].time);
-//            }
-//            printf("\r\n");
-//            for (int i = 0; i < 400; ++i) {
-//                printf("%d,", time_angle[i].angle);
-//            }
-//            printf("\r\n");
-//            old_dir = dir;
-//            memset(time_angle,0, sizeof(time_angle));
-//        }
+        //printf("step:%d,angle_origin:%f:,angle_fir:%f", step, (float) step / 1024 * 2 * M_PI * 22 / 32,
+        //       lasted_angle[1]);
+        float angle_ = (float) step / 1024 * 2 * M_PI * 22 / 32;
+        lasted_angle[0] = lasted_angle[1];
+        lasted_angle[1] = angle_;
+        arm_fir_f32(&arm_fir_instance, &angle_, &lasted_angle[1], 1);
     }
 
     float encoder_t::angle() {
+//        static float input_data[50];
+//        static float output_data[50];
+//        int input_data_index = 0;
+//        int time_now = TIM_GetCounter(TIM4);
+//        time_now >>= 1;
+//        time_now += second * 1000;
+//
+//        time_step_t *last_time_step_ = current_time_step;
+//        int time_last;
+//        float angle_last;
+//        for (int i = 0; i < 20 && input_data_index < 50; ++i) {
+//            time_last = last_time_step_->second * 1000 + last_time_step_->ms;
+//            angle_last = (float) last_time_step_->step / 1024 * 2 * M_PI * 22 / 32;
+//
+//            for (; input_data_index < 50;) {
+//                if (input_data_index <= time_now - time_last) {
+//                    input_data[50 - input_data_index - 1] = angle_last;
+//                    ++input_data_index;
+//                } else {
+//                    break;
+//                }
+//            }
+//            if (last_time_step_ == &time_step[0]) {
+//                last_time_step_ = &time_step[19];
+//            } else {
+//                --last_time_step_;
+//            }
+//        }
+//        arm_fir_f32(&arm_fir_instance,input_data,output_data,BLOCK_SIZE);
+//        return output_data[49];
         return (float) step / 1024 * 2 * M_PI * 22 / 32;
     }
 }

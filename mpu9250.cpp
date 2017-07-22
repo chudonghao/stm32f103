@@ -47,75 +47,19 @@ namespace {
         gyro_t gyro;
         angle_t angle;
     } mpu9250_data_t;
+    typedef struct {
+        int x;
+        int y;
+        int z;
+    } acc_int_t;
+    acc_int_t acc_int;
     mpu9250_data_t mpu9250_data;
     int usart2_data_buffer_length = 0;
-    unsigned char usart2_data_buffer[11];
-    bool trans_completed = true;
-//    struct STime {
-//        unsigned char ucYear;
-//        unsigned char ucMonth;
-//        unsigned char ucDay;
-//        unsigned char ucHour;
-//        unsigned char ucMinute;
-//        unsigned char ucSecond;
-//        unsigned short usMiliSecond;
-//    };
-//    struct SAcc {
-//        short a[3];
-//        short T;
-//    };
-//    struct SGyro {
-//        short w[3];
-//        short T;
-//    };
-//    struct SAngle {
-//        short Angle[3];
-//        short T;
-//    };
-//    struct SMag {
-//        short h[3];
-//        short T;
-//    };
-//
-//    struct SDStatus {
-//        short sDStatus[4];
-//    };
-//
-//    struct SPress {
-//        long lPressure;
-//        long lAltitude;
-//    };
-//
-//    struct SLonLat {
-//        long lLon;
-//        long lLat;
-//    };
-//
-//    struct SGPSV {
-//        short sGPSHeight;
-//        short sGPSYaw;
-//        long lGPSVelocity;
-//    };
-//    struct SQ {
-//        short q[4];
-//    };
-//    struct STime stcTime;
-//    struct SAcc stcAcc;
-//    struct SGyro stcGyro;
-//    struct SAngle stcAngle;
-//    struct SMag stcMag;
-//    struct SDStatus stcDStatus;
-//    struct SPress stcPress;
-//    struct SLonLat stcLonLat;
-//    struct SGPSV stcGPSV;
-//    struct SQ stcQ;
-//
-//    static unsigned char ucRxBuffer[11];
-//    static unsigned char ucRxCnt = 0;
+    unsigned char usart2_data_buffer[14];
+    bool trans_completed = false;
 }
 
 extern "C" void USART2_IRQHandler(void) {
-    USART_ClearITPendingBit(USART2, USART_IT_ORE);
     if (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {
         USART_ClearITPendingBit(USART2, USART_IT_RXNE);
         trans_completed = false;
@@ -125,49 +69,15 @@ extern "C" void USART2_IRQHandler(void) {
             if (data != 0x55) {
                 usart2_data_buffer_length = 0;
             }
-        } else if (usart2_data_buffer_length < 11) {
-        } else {
+        } else if (usart2_data_buffer_length == 14) {
             switch (usart2_data_buffer[1]) {
-                case 0x50:
-                    memcpy(&mpu9250_data.time, &usart2_data_buffer[2], 8);
-                    break;
                 case 0x51:
-                    memcpy(&mpu9250_data.acc, &usart2_data_buffer[2], 8);
-                    break;
-                case 0x52:
-                    memcpy(&mpu9250_data.gyro, &usart2_data_buffer[2], 8);
-                    break;
-                case 0x53:
-                    memcpy(&mpu9250_data.angle, &usart2_data_buffer[2], 8);
+                    memcpy(&acc_int, &usart2_data_buffer[2], 12);
                     trans_completed = true;
                     break;
             }
             usart2_data_buffer_length = 0;
         }
-//        ucRxBuffer[ucRxCnt++]=data;
-//        if (ucRxBuffer[0]!=0x55) //Êý¾ÝÍ·²»¶Ô£¬ÔòÖØÐÂ¿ªÊ¼Ñ°ÕÒ0x55Êý¾ÝÍ·
-//        {
-//            ucRxCnt=0;
-//            return;
-//        }
-//        if (ucRxCnt<11) {return;}//Êý¾Ý²»Âú11¸ö£¬Ôò·µ»Ø
-//        else
-//        {
-//            switch(ucRxBuffer[1])//ÅÐ¶ÏÊý¾ÝÊÇÄÄÖÖÊý¾Ý£¬È»ºó½«Æä¿½±´µ½¶ÔÓ¦µÄ½á¹¹ÌåÖÐ£¬ÓÐÐ©Êý¾Ý°üÐèÒªÍ¨¹ýÉÏÎ»»ú´ò¿ª¶ÔÓ¦µÄÊä³öºó£¬²ÅÄÜ½ÓÊÕµ½Õâ¸öÊý¾Ý°üµÄÊý¾Ý
-//            {
-//                case 0x50:	memcpy(&stcTime,&ucRxBuffer[2],8);break;//memcpyÎª±àÒëÆ÷×Ô´øµÄÄÚ´æ¿½±´º¯Êý£¬ÐèÒýÓÃ"string.h"£¬½«½ÓÊÕ»º³åÇøµÄ×Ö·û¿½±´µ½Êý¾Ý½á¹¹ÌåÀïÃæ£¬´Ó¶øÊµÏÖÊý¾ÝµÄ½âÎö¡£
-//                case 0x51:	memcpy(&stcAcc,&ucRxBuffer[2],8);break;
-//                case 0x52:	memcpy(&stcGyro,&ucRxBuffer[2],8);break;
-//                case 0x53:	memcpy(&stcAngle,&ucRxBuffer[2],8);break;
-//                case 0x54:	memcpy(&stcMag,&ucRxBuffer[2],8);break;
-//                case 0x55:	memcpy(&stcDStatus,&ucRxBuffer[2],8);break;
-//                case 0x56:	memcpy(&stcPress,&ucRxBuffer[2],8);break;
-//                case 0x57:	memcpy(&stcLonLat,&ucRxBuffer[2],8);break;
-//                case 0x58:	memcpy(&stcGPSV,&ucRxBuffer[2],8);break;
-//                case 0x59:	memcpy(&stcQ,&ucRxBuffer[2],8);break;
-//            }
-//            ucRxCnt=0;//Çå¿Õ»º´æÇø
-//        }
     }
 }
 
@@ -187,7 +97,7 @@ namespace cdh {
         GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
         GPIO_Init(GPIOA, &GPIO_InitStructure);
         USART_InitTypeDef USART_InitStructure;
-        USART_InitStructure.USART_BaudRate = 19200;
+        USART_InitStructure.USART_BaudRate = 115200;
         USART_InitStructure.USART_WordLength = USART_WordLength_8b;
         USART_InitStructure.USART_StopBits = USART_StopBits_1;
         USART_InitStructure.USART_Parity = USART_Parity_No;
@@ -197,7 +107,7 @@ namespace cdh {
         NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
         NVIC_InitTypeDef NVIC_InitStructure;
         NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
         NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
         NVIC_Init(&NVIC_InitStructure);
@@ -213,16 +123,29 @@ namespace cdh {
 //            usart1_t usart1;
 //            usart1.write(&data, 1, 1);
 //        }
-        int ss = mpu9250_data.time.ss;
-        int ms = mpu9250_data.time.ms;
-        float ax = (float) mpu9250_data.acc.x / 32768 * 16;
-        float ay = (float) mpu9250_data.acc.y / 32768 * 16;
-        float az = (float) mpu9250_data.acc.z / 32768 * 16;
-        float wx = (float) mpu9250_data.gyro.x / 32768 * 2000;
-        float wy = (float) mpu9250_data.gyro.y / 32768 * 2000;
-        float wz = (float) mpu9250_data.gyro.z / 32768 * 2000;
-        printf("ax:%.3f\tay:%.3f\taz:%.3f\tx:%.3f\ty:%.3f\tz:%.3f\r\n", ax, ay, az, wx, wy, wz);
-        //Êä³öÊ±¼ä
+//        int ss = mpu9250_data.time.ss;
+//        int ms = mpu9250_data.time.ms;
+//        float ax = (float) mpu9250_data.acc.x / 32768 * 16;
+//        float ay = (float) mpu9250_data.acc.y / 32768 * 16;
+//        float az = (float) mpu9250_data.acc.z / 32768 * 16;
+//        float wx = (float) mpu9250_data.gyro.x / 32768 * 2000;
+//        float wy = (float) mpu9250_data.gyro.y / 32768 * 2000;
+//        float wz = (float) mpu9250_data.gyro.z / 32768 * 2000;
+//        printf("ax:%.3f\tay:%.3f\taz:%.3f\tx:%.3f\ty:%.3f\tz:%.3f\r\n", ax, ay, az, wx, wy, wz);
+
+//        printf("%c,%c,%c\r\n",usart2_data_buffer[0],usart2_data_buffer[1],usart2_data_buffer[2]);
+//        while (trans_completed == false) {
+//            printf("wait data:%d\r\n", usart2_data_buffer_length);
+//        }
+        while (!trans_completed) {
+            printf("wait data.%d\r\n", usart2_data_buffer_length);
+        }
+        float ax = (float) acc_int.x * 0.002392578f;
+        float ay = (float) acc_int.y * 0.002392578f;
+        float az = (float) acc_int.z * 0.002392578f;
+        printf("ax:%.3f\tay:%.3f\taz:%.3f\r\n", ax, ay, az);
+
+//        //Êä³öÊ±¼ä
 //        printf("Time:20%d-%d-%d %d:%d:%.3f\r\n",stcTime.ucYear,stcTime.ucMonth,stcTime.ucDay,stcTime.ucHour,stcTime.ucMinute,(float)stcTime.ucSecond+(float)stcTime.usMiliSecond/1000);
 //        //Êä³ö¼ÓËÙ¶È
 //        printf("Acc:%.3f %.3f %.3f\r\n",(float)stcAcc.a[0]/32768*16,(float)stcAcc.a[1]/32768*16,(float)stcAcc.a[2]/32768*16);
@@ -250,15 +173,8 @@ namespace cdh {
 
     vec2<float> mpu9250_t::acc() {
         while (!trans_completed);//等待完整的数据
-        USART_Cmd(USART2, DISABLE);
         trans_completed = false;//读取一次
-
-        short x = mpu9250_data.acc.x;
-        short y = mpu9250_data.acc.y;
-        USART_Cmd(USART2, ENABLE);
-        float ax = (float) x / 32768 * 16 * 9.8;
-        float ay = (float) y / 32768 * 16 * 9.8;
-        return vec2<float>(ax, ay);
+        return vec2<float>((float) acc_int.x * 0.002392578f, (float) acc_int.y * 0.002392578f);
     }
 
 }

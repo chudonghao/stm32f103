@@ -27,6 +27,7 @@
     <ToolsetName>ARM-ADS</ToolsetName>
     <TargetOption>
       <CLKADS>12000000</CLKADS>
+      <pArmCC>5050106::V5.05 update 1 (build 106)::ARMCC</pArmCC>
       <OPTTT>
         <gFlags>1</gFlags>
         <BeepAtEnd>1</BeepAtEnd>
@@ -187,12 +188,17 @@
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>acc</ItemText>
+          <ItemText>time_step</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>1</WinNumber>
-          <ItemText>acc</ItemText>
+          <ItemText>current_time_step</ItemText>
+        </Ww>
+        <Ww>
+          <count>4</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>input_data_index</ItemText>
         </Ww>
       </WatchWindow1>
       <Tracepoint>
@@ -244,8 +250,20 @@
           <WinId>35904</WinId>
         </Entry>
         <Entry>
+          <Name>System Viewer\TIM4</Name>
+          <WinId>35905</WinId>
+        </Entry>
+        <Entry>
           <Name>System Viewer\TIM5</Name>
           <WinId>35900</WinId>
+        </Entry>
+        <Entry>
+          <Name>System Viewer\USART1</Name>
+          <WinId>35898</WinId>
+        </Entry>
+        <Entry>
+          <Name>System Viewer\USART2</Name>
+          <WinId>35899</WinId>
         </Entry>
       </SystemViewers>
       <DebugDescription>
