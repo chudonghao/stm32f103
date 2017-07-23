@@ -11,8 +11,10 @@ namespace cdh{
     public:
         static encoder_t*open();
         static int value();
+        static int dir();
         static float angle();
         static void test();
+        static void enable_soft_sampling();
     };
 
 }

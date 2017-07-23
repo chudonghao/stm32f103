@@ -6,6 +6,7 @@
 #include <stm32f10x_conf.h>
 #include <cstdio>
 #include <arm_math.h>
+#include <cmsis_os2.h>
 #include "vec2.h"
 
 using namespace cdh;
@@ -42,6 +43,13 @@ extern "C" void EXTI9_5_IRQHandler() {
     step += dir;
 }
 
+static void sampling_func(void *) {
+    printf("sampling\r\n");
+//    float angle_ = (float) step / 1024 * 2 * M_PI * 22 / 32;
+//    lasted_angle[0] = lasted_angle[1];
+//    arm_fir_f32(&arm_fir_instance, &angle_, &lasted_angle[1], 1);
+}
+
 namespace cdh {
     encoder_t *encoder_t::encoder = 0;
 
@@ -64,9 +72,9 @@ namespace cdh {
         GPIO_Init(GPIOA, &GPIO_InitStructure);
 
         if (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_4) == Bit_SET) {
-            dir = -1;
+            ::dir = -1;
         } else {
-            dir = 1;
+            ::dir = 1;
         }
 
         GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource4);
@@ -115,19 +123,6 @@ namespace cdh {
 //        NVIC_Init(&NVIC_InitStructure);
 
 //        TIM_Cmd(TIM4, ENABLE);
-
-//#define BLOCK_SIZE 50
-//#define NUM_TAPS 30
-//        static float coeffs[NUM_TAPS] = {
-//                0.0005415165797, 0.001727426774, 0.003113061655, 0.003883380443, 0.002264012117,
-//                -0.003352924949, -0.01260423567, -0.0218139533, -0.02428940125, -0.01267496031,
-//                0.01740843058, 0.06416342407, 0.11868231, 0.1671814919, 0.1957704276,
-//                0.1957704276, 0.1671814919, 0.11868231, 0.06416342407, 0.01740843058,
-//                -0.01267496031, -0.02428940125, -0.0218139533, -0.01260423567, -0.003352924949,
-//                0.002264012117, 0.003883380443, 0.003113061655, 0.001727426774, 0.0005415165797
-//        };
-//        static float state[BLOCK_SIZE + NUM_TAPS - 1];
-//        arm_fir_init_f32(&arm_fir_instance, NUM_TAPS, coeffs, state, BLOCK_SIZE);
         return encoder;
     }
 
@@ -136,12 +131,8 @@ namespace cdh {
     }
 
     void encoder_t::test() {
-        //printf("step:%d,angle_origin:%f:,angle_fir:%f", step, (float) step / 1024 * 2 * M_PI * 22 / 32,
-        //       lasted_angle[1]);
-        float angle_ = (float) step / 1024 * 2 * M_PI * 22 / 32;
-        lasted_angle[0] = lasted_angle[1];
-        lasted_angle[1] = angle_;
-        arm_fir_f32(&arm_fir_instance, &angle_, &lasted_angle[1], 1);
+        printf("step:%d,angle_origin:%f:,angle_fir:%f\r\n", step, (float) step / 1024 * 2 * M_PI * 22 / 32,
+               lasted_angle[1]);
     }
 
     float encoder_t::angle() {
@@ -176,5 +167,31 @@ namespace cdh {
 //        arm_fir_f32(&arm_fir_instance,input_data,output_data,BLOCK_SIZE);
 //        return output_data[49];
         return (float) step / 1024 * 2 * M_PI * 22 / 32;
+    }
+
+    int encoder_t::dir() {
+        return ::dir;
+    }
+
+    void encoder_t::enable_soft_sampling() {
+#define BLOCK_SIZE 50
+#define NUM_TAPS 30
+        static float coeffs[NUM_TAPS] = {
+                0.0005415165797, 0.001727426774, 0.003113061655, 0.003883380443, 0.002264012117,
+                -0.003352924949, -0.01260423567, -0.0218139533, -0.02428940125, -0.01267496031,
+                0.01740843058, 0.06416342407, 0.11868231, 0.1671814919, 0.1957704276,
+                0.1957704276, 0.1671814919, 0.11868231, 0.06416342407, 0.01740843058,
+                -0.01267496031, -0.02428940125, -0.0218139533, -0.01260423567, -0.003352924949,
+                0.002264012117, 0.003883380443, 0.003113061655, 0.001727426774, 0.0005415165797
+        };
+        static float state[BLOCK_SIZE + NUM_TAPS - 1];
+        arm_fir_init_f32(&arm_fir_instance, NUM_TAPS, coeffs, state, BLOCK_SIZE);
+        //TODO 不能在中断中 fir滤波
+        osTimerId_t sampling_timer_id = osTimerNew((osTimerFunc_t)&sampling_func, osTimerPeriodic, (void*)0, 0);
+        osStatus_t status = osTimerStart(sampling_timer_id, 1000);
+        if(status == osOK){
+            printf("OK\r\n");
+        }
+        printf("%p,%d\r\n", sampling_timer_id,status);
     }
 }

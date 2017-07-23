@@ -237,7 +237,7 @@
 //   <i> May be set to 0 when timers are not used.
 //   <i> Default: 200
 #ifndef OS_TIMER_THREAD_STACK_SIZE
-#define OS_TIMER_THREAD_STACK_SIZE  200
+#define OS_TIMER_THREAD_STACK_SIZE  400
 #endif
  
 //   <o>Timer Callback Queue entries <0-256>

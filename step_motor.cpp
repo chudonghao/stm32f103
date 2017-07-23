@@ -9,13 +9,14 @@
 static int step = 0;
 static int dir = 0;
 static int next_step = 0;
+static int pulse = 800;
 
 extern "C" void TIM5_IRQHandler() {
     if (TIM_GetITStatus(TIM5, TIM_IT_CC1) == SET) {
         TIM_ClearITPendingBit(TIM5, TIM_IT_CC1);
         step += dir;
-        if(step == next_step)
-            TIM_Cmd(TIM5,DISABLE);
+        if (step == next_step)
+            TIM_Cmd(TIM5, DISABLE);
     }
 }
 
@@ -72,26 +73,45 @@ namespace cdh {
 
     }
 
-    void step_motor_t::set_next_step(int next_step,int p) {
+    void step_motor_t::set_next_step(int next_step, int p) {
         TIM_Cmd(TIM5, DISABLE);
-        if(p>=720)
-            TIM_SetAutoreload(TIM5,p);
+        if (p >= 100)
+            TIM_SetAutoreload(TIM5, p);
 
         ::next_step = next_step;
         if (::next_step > ::step) {
             dir = 1;
             GPIO_WriteBit(GPIOC, GPIO_Pin_0, Bit_SET);
-        } else if(::next_step < ::step){
+        } else if (::next_step < ::step) {
             dir = -1;
             GPIO_WriteBit(GPIOC, GPIO_Pin_0, Bit_RESET);
-        } else{
+        } else {
             return;
         }
         TIM_Cmd(TIM5, ENABLE);
     }
 
     int step_motor_t::map_angle_to_step(float angle) {
-        return angle / 2 / M_PI * 3200;
+        return angle / 2 / M_PI * pulse;
+    }
+
+    void step_motor_t::fix_step(int step) {
+        TIM_Cmd(TIM5, DISABLE);
+        ::step += step;
+        if (::next_step > ::step) {
+            dir = 1;
+            GPIO_WriteBit(GPIOC, GPIO_Pin_0, Bit_SET);
+        } else if (::next_step < ::step) {
+            dir = -1;
+            GPIO_WriteBit(GPIOC, GPIO_Pin_0, Bit_RESET);
+        } else {
+            return;
+        }
+        TIM_Cmd(TIM5, ENABLE);
+    }
+
+    void step_motor_t::set_pulse(int pulse) {
+        ::pulse = pulse;
     }
 }
 

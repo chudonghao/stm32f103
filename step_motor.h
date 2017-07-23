@@ -10,6 +10,8 @@ namespace cdh{
     public:
         static step_motor_t*open();
         static void set_dir(int dir);
+        static void set_pulse(int pulse);
+        static void fix_step(int step);
         static void set_next_step(int next_step,int p = 720);
         static int map_angle_to_step(float angle);
     };
