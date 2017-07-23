@@ -16,16 +16,15 @@ static int dir = 0;
 static int step = 0;
 
 static arm_fir_instance_f32 arm_fir_instance;
-static float lasted_angle[2];
+static float lasted_angle;
 
 //extern "C" void TIM4_IRQHandler() {
 //    if (TIM_GetITStatus(TIM4, TIM_IT_Update) != RESET) {
 //        TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
 //        float angle_ = (float) step / 1024 * 2 * M_PI * 22 / 32;
-//        lasted_angle[0] = lasted_angle[1];
-//        lasted_angle[1] = angle_;
-//        arm_fir_f32(&arm_fir_instance, &angle_, &lasted_angle[1], 1);
-//        //printf("test\r\n");
+//        arm_fir_f32(&arm_fir_instance, &angle_, &lasted_angle, 1);
+//        //TODO 不能在中断中 fir滤波
+//        printf("test\r\n");
 //    }
 //};
 
@@ -41,13 +40,6 @@ extern "C" void EXTI4_IRQHandler() {
 extern "C" void EXTI9_5_IRQHandler() {
     EXTI_ClearITPendingBit(EXTI_Line5);
     step += dir;
-}
-
-static void sampling_func(void *) {
-    printf("sampling\r\n");
-//    float angle_ = (float) step / 1024 * 2 * M_PI * 22 / 32;
-//    lasted_angle[0] = lasted_angle[1];
-//    arm_fir_f32(&arm_fir_instance, &angle_, &lasted_angle[1], 1);
 }
 
 namespace cdh {
@@ -114,15 +106,30 @@ namespace cdh {
 //        TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 //        TIM_ARRPreloadConfig(TIM4, ENABLE);
 //        TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
-
+//
 //        TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
 //        NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
 //        NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 //        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x3;
 //        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0;
 //        NVIC_Init(&NVIC_InitStructure);
-
+//
+//#define BLOCK_SIZE 50
+//#define NUM_TAPS 30
+//        static float coeffs[NUM_TAPS] = {
+//                0.0005415165797, 0.001727426774, 0.003113061655, 0.003883380443, 0.002264012117,
+//                -0.003352924949, -0.01260423567, -0.0218139533, -0.02428940125, -0.01267496031,
+//                0.01740843058, 0.06416342407, 0.11868231, 0.1671814919, 0.1957704276,
+//                0.1957704276, 0.1671814919, 0.11868231, 0.06416342407, 0.01740843058,
+//                -0.01267496031, -0.02428940125, -0.0218139533, -0.01260423567, -0.003352924949,
+//                0.002264012117, 0.003883380443, 0.003113061655, 0.001727426774, 0.0005415165797
+//        };
+//        static float state[BLOCK_SIZE + NUM_TAPS - 1];
+//        arm_fir_init_f32(&arm_fir_instance, NUM_TAPS, coeffs, state, BLOCK_SIZE);
+//        float tmp[50];
+//        arm_fir_f32(&arm_fir_instance,tmp,tmp,50);
 //        TIM_Cmd(TIM4, ENABLE);
+
         return encoder;
     }
 
@@ -132,7 +139,7 @@ namespace cdh {
 
     void encoder_t::test() {
         printf("step:%d,angle_origin:%f:,angle_fir:%f\r\n", step, (float) step / 1024 * 2 * M_PI * 22 / 32,
-               lasted_angle[1]);
+               lasted_angle);
     }
 
     float encoder_t::angle() {
@@ -171,27 +178,5 @@ namespace cdh {
 
     int encoder_t::dir() {
         return ::dir;
-    }
-
-    void encoder_t::enable_soft_sampling() {
-#define BLOCK_SIZE 50
-#define NUM_TAPS 30
-        static float coeffs[NUM_TAPS] = {
-                0.0005415165797, 0.001727426774, 0.003113061655, 0.003883380443, 0.002264012117,
-                -0.003352924949, -0.01260423567, -0.0218139533, -0.02428940125, -0.01267496031,
-                0.01740843058, 0.06416342407, 0.11868231, 0.1671814919, 0.1957704276,
-                0.1957704276, 0.1671814919, 0.11868231, 0.06416342407, 0.01740843058,
-                -0.01267496031, -0.02428940125, -0.0218139533, -0.01260423567, -0.003352924949,
-                0.002264012117, 0.003883380443, 0.003113061655, 0.001727426774, 0.0005415165797
-        };
-        static float state[BLOCK_SIZE + NUM_TAPS - 1];
-        arm_fir_init_f32(&arm_fir_instance, NUM_TAPS, coeffs, state, BLOCK_SIZE);
-        //TODO 不能在中断中 fir滤波
-        osTimerId_t sampling_timer_id = osTimerNew((osTimerFunc_t)&sampling_func, osTimerPeriodic, (void*)0, 0);
-        osStatus_t status = osTimerStart(sampling_timer_id, 1000);
-        if(status == osOK){
-            printf("OK\r\n");
-        }
-        printf("%p,%d\r\n", sampling_timer_id,status);
     }
 }

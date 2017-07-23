@@ -38,7 +38,6 @@ static float f_base;
 static bool on_hand = true;
 
 static void led1_func(void *) {
-//    encoder_t::enable_soft_sampling();
     char str[32];
     printf(">> func:circle coin laser.\r\n");
 //    printf("mpu9250 test:\r\n");
@@ -142,7 +141,7 @@ static void main_func(void *) {
                         on_hand = false;
                     }
                 } else {//手已经释放
-                    step_motor_t::set_next_step(step_motor_t::map_angle_to_step(0), 900);
+                    step_motor_t::set_next_step(step_motor_t::map_angle_to_step(0), 1200);
                 }
                 break;
             }

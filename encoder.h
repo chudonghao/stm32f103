@@ -14,7 +14,6 @@ namespace cdh{
         static int dir();
         static float angle();
         static void test();
-        static void enable_soft_sampling();
     };
 
 }
