@@ -32,8 +32,10 @@ include_directories(
         ${Keil_v5_dir2}/ARM/ARMCC/include
 
         ${FreeRTOS_dir}/FreeRTOS/Source/include
+
         ${PROJECT_SOURCE_DIR}/third_party/stm32f1_warship_v3/camera_test/HARDWARE/LCD
         ${PROJECT_SOURCE_DIR}/third_party/stm32f1_warship_v3/camera_test/HARDWARE/OV7670
 
+        ${PROJECT_SOURCE_DIR}/third_party/glm
 )
-add_executable(main.cpp usart1.cpp)
+add_executable(main.cpp usart1.cpp step_motor_couple.cpp step_motor_couple.h fix_glm.h)

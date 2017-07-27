@@ -1,8 +1,10 @@
 
-#include "cstring"
+#include <cstring>
 #include <FreeRTOS.h>
 #include <task.h>
 #include <stm32f10x_conf.h>
+#include "fix_glm.h"
+#include <glm/glm.hpp>
 
 #define SYSTEM_SUPPORT_OS 1
 extern "C" {
@@ -15,6 +17,11 @@ extern "C" {
 #include "usart.h"
 }
 
+#include "step_motor_couple.h"
+
+using namespace cdh;
+using namespace glm;
+using namespace std;
 extern u8 ov_sta;    //在exit.c里 面定义
 const static int camera_w = 240;
 const static int camera_h = 320;
@@ -49,22 +56,9 @@ void camera_refresh(void) {
             color |= GPIOC->IDR & 0XFF;    //读数据
             OV7670_RCK_H;
 
-//            u16 tmp = color & ((u16)0x1f << 11);
-//            tmp >>= 11;
 //            if(j%camera_h == 0)
 //                printf("line:");
 //            printf("%d,",tmp);
-
-//            if(tmp > 28)
-//                color = 0xf800;
-
-//            tmp = color & ((u16)0x3f << 5);
-//            if(tmp < ((u16)50 << 5))
-//                result = 0x0;
-
-//            tmp = color & ((u16)0x1f);
-//            if(tmp < ((u16)30))
-//                result = 0x0;
 
             LCD->LCD_RAM = color;
         }
@@ -110,23 +104,49 @@ void camera_refresh(void) {
 //
 //            }
 //        }
-
+        //yuv图像处理
+        for (int x = 0; x < camera_h; ++x) {
+            for (int y = 0; y < camera_w; ++y) {
+                color = LCD_ReadPoint(x, y);
+                u16 tmp;
+                //红点
+                tmp = color & ((u16) 0xff << 8);
+                if (tmp > ((u16) 200 << 8)) {
+                    POINT_COLOR = WHITE;
+                } else if (tmp < ((u16) 100 << 8)) {
+                    POINT_COLOR = BLACK;
+                } else {
+                    POINT_COLOR = GRAY;
+                }
+                LCD_DrawPoint(x, y + 240);
+            }
+        }
         ov_sta = 0;                    //清零帧中断标记
         LCD_Scan_Dir(DFT_SCAN_DIR);    //恢复默认扫描方向
     }
 }
+void step_func(void*){
+    for(;;){
+        static ivec2 test = ivec2(0,0);
+        static int i = 1;
+        test += ivec2(10 * i,10 * i);
+        i = -i;
+        step_motor_couple_t::set_next_steps(test);
+        step_motor_couple_t::step();
+        vTaskDelay(100/portTICK_RATE_MS);
+    }
 
+}
 void main_task(void *) {
     for (;;) {
-        vTaskSuspendAll();
         camera_refresh();//更新显示
-        xTaskResumeAll();
     }
 }
 
 int main(void) {
     SystemCoreClockUpdate();
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); //设置中断优先级分组为组2：2位抢占优先级，2位响应优先级
+    step_motor_couple_t::init();
     delay_init();                                   //延时函数初始化
     LCD_Init();                                     //初始化LCD
     uart_init(115200);
@@ -177,6 +197,8 @@ int main(void) {
     LCD_Clear(RED);
     delay_ms(100);
     LCD_Clear(BLACK);
+
     xTaskCreate(main_task, 0, 100, 0, 1, 0);
-    xPortStartScheduler();
+    xTaskCreate(step_func, 0, 100, 0, 1, 0);
+    vTaskStartScheduler();
 }
