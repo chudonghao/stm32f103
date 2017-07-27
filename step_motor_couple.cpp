@@ -1,0 +1,124 @@
+//
+// Created by leu19 on 2017/7/28.
+//
+#include <fix_glm.h>
+#include <glm/glm.hpp>
+#include "step_motor_couple.h"
+#include <main.h>
+#include <tim.h>
+#include <gpio.h>
+#include <cmsis_os.h>
+#include <stm32f1xx_hal_tim.h>
+
+using namespace glm;
+namespace {
+    ivec2 current_steps;
+    ivec2 next_steps;
+}
+
+
+extern "C" void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
+    if (htim->Instance == TIM2) {
+        if (next_steps.x > current_steps.x) {
+            ++current_steps.x;
+        } else if (next_steps.x < current_steps.x) {
+            --current_steps.x;
+        } else {
+            HAL_TIM_PWM_Stop_IT(&htim2, TIM_CHANNEL_2);
+        }
+    } else if (htim3.Instance == TIM3) {
+        if (next_steps.y > current_steps.y) {
+            ++current_steps.y;
+        } else if (next_steps.y < current_steps.y) {
+            --current_steps.y;
+        } else {
+            HAL_TIM_PWM_Stop_IT(&htim3, TIM_CHANNEL_1);
+        }
+
+    }
+}
+
+namespace cdh {
+
+    void step_motor_couple_t::test() {
+        static int i = 1;
+        set_next_steps(current_steps + ivec2(10*i , 10*i));
+        step();
+        osDelay(1000);
+        printf("%d,%d\r\n", current_steps.x, current_steps.y);
+        i = -i;
+    }
+
+    int step_motor_couple_t::set_next_steps(glm::ivec2 next_steps) {
+        if (next_steps == ::next_steps) {
+            return 0;
+        } else if (::next_steps == ::current_steps){
+            ::next_steps = next_steps;
+            if(current_steps.x != next_steps.x){
+                if(current_steps.x < next_steps.x){
+                    HAL_GPIO_WritePin(step_motor1_dir_GPIO_Port,step_motor1_dir_Pin,GPIO_PIN_SET);
+                }else if(current_steps.x > next_steps.x){
+                    HAL_GPIO_WritePin(step_motor1_dir_GPIO_Port,step_motor1_dir_Pin,GPIO_PIN_RESET);
+                }
+                __HAL_TIM_SET_AUTORELOAD(&htim2, 20);
+                HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_2);
+            }
+            if(current_steps.y != next_steps.y){
+                if(current_steps.y < next_steps.y){
+                    HAL_GPIO_WritePin(step_motor2_dir_GPIO_Port,step_motor2_dir_Pin,GPIO_PIN_SET);
+                }else if(current_steps.y > next_steps.y){
+                    HAL_GPIO_WritePin(step_motor2_dir_GPIO_Port,step_motor2_dir_Pin,GPIO_PIN_RESET);
+                }
+                __HAL_TIM_SET_AUTORELOAD(&htim3, 20);
+                HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
+            }
+            return 0;
+        } else{
+            return -1;
+        }
+    }
+
+    void step_motor_couple_t::step() {
+        ivec2 steps_dir = current_steps - next_steps;
+        if (steps_dir.x < 0) {
+            steps_dir.x = -steps_dir.x;
+        }
+        if (steps_dir.y < 0) {
+            steps_dir.y = -steps_dir.y;
+        }
+        if (steps_dir.x != 0 || steps_dir.y != 0)
+            if (steps_dir.x == 0) {
+                __HAL_TIM_SET_AUTORELOAD(&htim3, 600 - 1);
+            } else if (steps_dir.y == 0) {
+                __HAL_TIM_SET_AUTORELOAD(&htim2, 600 - 1);
+            } else {
+                if (steps_dir.x >= steps_dir.y) {
+                    float k = steps_dir.x / steps_dir.y;
+                    if (k > (float)65536 / 600) {
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 600 - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 65536 - 1);
+                    } else {
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 600 - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 600 * k - 1);
+                    }
+                } else {
+                    float k = steps_dir.y / steps_dir.x;
+                    if (k >(float) 65536 / 600) {
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 600 - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 65536 - 1);
+                    } else {
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 600 - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 600 * k - 1);
+                    }
+                }
+            }
+    }
+
+    void step_motor_couple_t::set_current_steps(glm::ivec2 current) {
+        HAL_TIM_PWM_Stop_IT(&htim2,TIM_CHANNEL_2);
+        HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_1);
+        current_steps = current;
+        next_steps = current;
+    }
+}
+
