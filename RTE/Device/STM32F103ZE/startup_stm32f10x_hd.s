@@ -80,8 +80,8 @@ __Vectors       DCD     __initial_sp               ; Top of Stack
                 DCD     0                          ; Reserved
                 ;DCD     PendSV_Handler             ; PendSV Handler
                 DCD     xPortPendSVHandler             ; PendSV Handler
-                ;DCD     SysTick_Handler            ; SysTick Handler
-                DCD     xPortSysTickHandler            ; SysTick Handler
+                DCD     SysTick_Handler            ; SysTick Handler
+                ;DCD     xPortSysTickHandler            ; SysTick Handler
 
                 ; External Interrupts
                 DCD     WWDG_IRQHandler            ; Window Watchdog

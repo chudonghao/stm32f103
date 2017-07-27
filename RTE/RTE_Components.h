@@ -3,8 +3,8 @@
  * Auto generated Run-Time-Environment Component Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'study_freertos' 
- * Target:  'freertos' 
+ * Project: 'proj' 
+ * Target:  'proj' 
  */
 
 #ifndef RTE_COMPONENTS_H
