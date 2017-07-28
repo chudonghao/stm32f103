@@ -413,16 +413,6 @@
               <FileType>8</FileType>
               <FilePath>.\main.cpp</FilePath>
             </File>
-            <File>
-              <FileName>step_motor_couple.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>.\step_motor_couple.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>step_motor_couple.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\step_motor_couple.h</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>

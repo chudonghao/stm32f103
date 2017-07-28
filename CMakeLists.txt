@@ -38,4 +38,4 @@ include_directories(
 
         ${PROJECT_SOURCE_DIR}/third_party/glm
 )
-add_executable(main.cpp usart1.cpp step_motor_couple.cpp step_motor_couple.h fix_glm.h)
+add_executable(main.cpp usart1.cpp fix_glm.h)
