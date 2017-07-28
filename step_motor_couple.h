@@ -10,11 +10,12 @@ namespace cdh{
     class step_motor_couple_t {
     public:
         static void test();
-        static int set_next_steps(glm::ivec2 next_steps);
+        static int set_next_steps(const glm::ivec2 &);
         static void step();
-        static void set_current_steps(glm::ivec2 current_steps);
+        static void set_current_steps(const glm::ivec2 &);
         static int status();
-        static glm::ivec2 map_position_to_steps(const glm::vec2);
+        static glm::ivec2 map_position_to_steps(const glm::vec2&);
+        static glm::ivec2 current_steps();
     };
 }
 

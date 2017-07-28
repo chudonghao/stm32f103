@@ -24,7 +24,7 @@ extern "C" void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
         } else if (next_steps.x < current_steps.x) {
             --current_steps.x;
         }
-        if(next_steps.x == current_steps.x) {
+        if (next_steps.x == current_steps.x) {
             HAL_TIM_PWM_Stop_IT(&htim2, TIM_CHANNEL_2);
         }
     } else if (htim3.Instance == TIM3) {
@@ -61,24 +61,24 @@ namespace cdh {
             i = 0.01;
     }
 
-    int step_motor_couple_t::set_next_steps(glm::ivec2 next_steps) {
-        if (next_steps == ::next_steps) {
+    int step_motor_couple_t::set_next_steps(const glm::ivec2 &next_steps) {
+        if (::next_steps == next_steps) {
             return 0;
         } else if (::next_steps == ::current_steps) {
             ::next_steps = next_steps;
-            if (current_steps.x != next_steps.x) {
-                if (current_steps.x < next_steps.x) {
+            if (::current_steps.x != next_steps.x) {
+                if (::current_steps.x < next_steps.x) {
                     HAL_GPIO_WritePin(step_motor1_dir_GPIO_Port, step_motor1_dir_Pin, GPIO_PIN_SET);
-                } else if (current_steps.x > next_steps.x) {
+                } else if (::current_steps.x > next_steps.x) {
                     HAL_GPIO_WritePin(step_motor1_dir_GPIO_Port, step_motor1_dir_Pin, GPIO_PIN_RESET);
                 }
                 __HAL_TIM_SET_AUTORELOAD(&htim2, 20);
                 HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_2);
             }
-            if (current_steps.y != next_steps.y) {
-                if (current_steps.y < next_steps.y) {
+            if (::current_steps.y != ::next_steps.y) {
+                if (::current_steps.y < ::next_steps.y) {
                     HAL_GPIO_WritePin(step_motor2_dir_GPIO_Port, step_motor2_dir_Pin, GPIO_PIN_SET);
-                } else if (current_steps.y > next_steps.y) {
+                } else if (::current_steps.y > ::next_steps.y) {
                     HAL_GPIO_WritePin(step_motor2_dir_GPIO_Port, step_motor2_dir_Pin, GPIO_PIN_RESET);
                 }
                 __HAL_TIM_SET_AUTORELOAD(&htim3, 20);
@@ -91,7 +91,7 @@ namespace cdh {
     }
 
     void step_motor_couple_t::step() {
-        ivec2 steps_dir = current_steps - next_steps;
+        ivec2 steps_dir = ::current_steps - ::next_steps;
         if (steps_dir.x < 0) {
             steps_dir.x = -steps_dir.x;
         }
@@ -126,28 +126,32 @@ namespace cdh {
             }
     }
 
-    void step_motor_couple_t::set_current_steps(glm::ivec2 current) {
+    void step_motor_couple_t::set_current_steps(const glm::ivec2 &current) {
         HAL_TIM_PWM_Stop_IT(&htim2, TIM_CHANNEL_2);
         HAL_TIM_PWM_Stop_IT(&htim3, TIM_CHANNEL_1);
-        current_steps = current;
+        ::current_steps = current;
         next_steps = current;
     }
 
     int step_motor_couple_t::status() {
-        if (next_steps != current_steps)
+        if (::next_steps != ::current_steps)
             return -1;
         return 0;
     }
 
-    glm::ivec2 step_motor_couple_t::map_position_to_steps(const glm::vec2 position) {
+    glm::ivec2 step_motor_couple_t::map_position_to_steps(const glm::vec2 &position) {
         float tan_a = position.x / 3000;
-        float tan_b = (position.y - 120) / sqrt(3000*3000 + position.x * position.x);
+        float tan_b = (position.y - 120) / sqrt(3000 * 3000 + position.x * position.x);
         float a = atan(tan_a);
         float b = atan(tan_b);
         ivec2 res;
         res.x = a / 2 / 3.141592653f * 3200;
         res.y = b / 2 / 3.141592653f * 3200;
         return res;
+    }
+
+    glm::ivec2 step_motor_couple_t::current_steps() {
+        return ::current_steps;
     }
 
 }

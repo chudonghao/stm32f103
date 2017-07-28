@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <cstring>
 #include "step_motor_couple.h"
+#include "key_board.h"
+#include "laser.h"
 #include <main.h>
 #include <gpio.h>
 #include <cmsis_os.h>
@@ -11,13 +13,50 @@
 using namespace cdh;
 using namespace std;
 using namespace glm;
+extern "C" void key_board_task(const void *){
+    static int old_key = -1;
+    static int delay_count = 0;
+    for (;;) {
+        int key = key_board_t::scan();
+        if(old_key == key && delay_count < 10){
+            osDelay(30);
+            ++delay_count;
+            continue;
+        }else if(old_key != key){
+            old_key = key;
+            delay_count = 0;
+        }
+        if(key == 1){
+            ivec2 cur = step_motor_couple_t::current_steps();
+            printf("cur=(%d,%d)\r\n",cur.x,cur.y);
+            cur.y+=1;
+            printf("cur=(%d,%d)\r\n",cur.x,cur.y);
+            step_motor_couple_t::set_next_steps(cur);
+        }else if(key == 4){
+            ivec2 cur = step_motor_couple_t::current_steps();
+            cur.x-=1;
+            step_motor_couple_t::set_next_steps(cur);
+        }else if(key == 6){
+            ivec2 cur = step_motor_couple_t::current_steps();
+            cur.x+=1;
+            step_motor_couple_t::set_next_steps(cur);
+        }else if(key == 9){
+            ivec2 cur = step_motor_couple_t::current_steps();
+            cur.y-=1;
+            step_motor_couple_t::set_next_steps(cur);
+        }
+        step_motor_couple_t::step();
+        printf("%d\r\n",key);
 
+
+    }
+}
 extern "C" void laser_task(const void*){
     for(;;){
         if(step_motor_couple_t::status() == -1){
-            HAL_GPIO_WritePin(laser_GPIO_Port,laser_Pin,GPIO_PIN_SET);
+            laser_t::off();
         }else{
-            HAL_GPIO_WritePin(laser_GPIO_Port,laser_Pin,GPIO_PIN_RESET);
+            laser_t::on();
         }
     }
 }
