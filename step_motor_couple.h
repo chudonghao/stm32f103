@@ -13,6 +13,7 @@ namespace cdh{
         static int set_next_steps(glm::ivec2 next_steps);
         static void step();
         static void set_current_steps(glm::ivec2 current_steps);
+        static int status();
     };
 }
 

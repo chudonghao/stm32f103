@@ -41,12 +41,22 @@ extern "C" void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
 namespace cdh {
 
     void step_motor_couple_t::test() {
-        static int i = 1;
-        set_next_steps(current_steps + ivec2(10*i , 10*i));
+        static float i = 0.01;
+        static float x_base = 0;
+        static vec2 cur;
+        cur = vec2(10*x_base,10*sin(x_base));
+
+        while (set_next_steps(cur) == -1){}
         step();
-        osDelay(1000);
-        printf("%d,%d\r\n", current_steps.x, current_steps.y);
-        i = -i;
+        x_base += i;
+        while (status() == -1){
+            osDelay(100);
+        }
+
+        if(x_base >=6.28)
+            i = -0.01;
+        if(x_base <= 0)
+            i = 0.01;
     }
 
     int step_motor_couple_t::set_next_steps(glm::ivec2 next_steps) {
@@ -88,27 +98,27 @@ namespace cdh {
         }
         if (steps_dir.x != 0 || steps_dir.y != 0)
             if (steps_dir.x == 0) {
-                __HAL_TIM_SET_AUTORELOAD(&htim3, 600 - 1);
+                __HAL_TIM_SET_AUTORELOAD(&htim3, 10000 - 1);
             } else if (steps_dir.y == 0) {
-                __HAL_TIM_SET_AUTORELOAD(&htim2, 600 - 1);
+                __HAL_TIM_SET_AUTORELOAD(&htim2, 10000 - 1);
             } else {
                 if (steps_dir.x >= steps_dir.y) {
                     float k = steps_dir.x / steps_dir.y;
-                    if (k > (float)65536 / 600) {
-                        __HAL_TIM_SET_AUTORELOAD(&htim2, 600 - 1);
+                    if (k > (float)65536 / 10000) {
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 10000 - 1);
                         __HAL_TIM_SET_AUTORELOAD(&htim3, 65536 - 1);
                     } else {
-                        __HAL_TIM_SET_AUTORELOAD(&htim2, 600 - 1);
-                        __HAL_TIM_SET_AUTORELOAD(&htim3, 600 * k - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 10000 - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 10000 * k - 1);
                     }
                 } else {
                     float k = steps_dir.y / steps_dir.x;
-                    if (k >(float) 65536 / 600) {
-                        __HAL_TIM_SET_AUTORELOAD(&htim3, 600 - 1);
+                    if (k >(float) 65536 / 10000) {
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 10000 - 1);
                         __HAL_TIM_SET_AUTORELOAD(&htim2, 65536 - 1);
                     } else {
-                        __HAL_TIM_SET_AUTORELOAD(&htim3, 600 - 1);
-                        __HAL_TIM_SET_AUTORELOAD(&htim2, 600 * k - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 10000 - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 10000 * k - 1);
                     }
                 }
             }
@@ -119,6 +129,12 @@ namespace cdh {
         HAL_TIM_PWM_Stop_IT(&htim3,TIM_CHANNEL_1);
         current_steps = current;
         next_steps = current;
+    }
+
+    int step_motor_couple_t::status() {
+        if(next_steps != current_steps)
+            return -1;
+        return 0;
     }
 }
 
