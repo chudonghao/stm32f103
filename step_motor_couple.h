@@ -14,6 +14,7 @@ namespace cdh{
         static void step();
         static void set_current_steps(glm::ivec2 current_steps);
         static int status();
+        static glm::ivec2 map_position_to_steps(const glm::vec2);
     };
 }
 
