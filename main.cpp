@@ -35,7 +35,9 @@ extern "C" void key_board_task(const void *){
             old_key = key;
             delay_count = 0;
         }
-        if(key == 1){
+        if(key == 0){
+            step_motor_couple_t::set_current_steps(ivec2(0,-20));
+        }else if(key == 1){
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.y+=1;
             step_motor_couple_t::set_next_steps(cur);
@@ -102,6 +104,8 @@ extern "C" void main_task() {
             step_motor_couple_t::set_next_steps(ivec2(x,y));
             step_motor_couple_t::step();
         }else if(strcmp(ch, "scp") == 0 || strcmp(ch, "set_current_position") == 0){
+            //TODO scp 已经不是原有的意思
+            //这里不再修正坐标，修正暂时使用 scs
             int res_number = scanf("%f%f", &x, &y);
             if(res_number != 2){
                 printf("scanf error.");
@@ -112,9 +116,6 @@ extern "C" void main_task() {
             ++new_position;
             current_x = x;
             current_y = y;
-            ivec2 steps = step_motor_couple_t::map_position_to_steps(vec2(x,y));
-            printf("set current position:(x,y)=(%.3f,%.3f),steps=(%d,%d)\r\n", x, y,steps.x,steps.y);
-            step_motor_couple_t::set_current_steps(steps);
         }else if(strcmp(ch, "snp") == 0 || strcmp(ch, "set_next_position") == 0){
             int res_number = scanf("%f%f", &x, &y);
             if(res_number != 2){
