@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <usart.h>
+#include <stm32f1xx_hal_conf.h>
 
 //#ifdef __GNUC__/* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
 //   set to 'Yes') calls __io_putchar() */
@@ -22,6 +23,11 @@ int fputc(int ch, FILE *f){
 static unsigned char uart1_rx_buffer[128];
 static unsigned char uart1_rx_buffer_start;
 static unsigned char uart1_rx_buffer_end;
+
+unsigned char uart3_rx_buffer[128];
+unsigned char uart3_rx_buffer_start;
+unsigned char uart3_rx_buffer_end;
+int uart3_have_sentence = 0;
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
     if(huart->Instance == USART1){
         //HAL_UART_Transmit(&huart1, &uart1_rx_buffer[uart1_rx_buffer_end], 1, 0xFFFF);
@@ -30,6 +36,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
             uart1_rx_buffer_end = 0;
         }
         HAL_UART_Receive_IT(&huart1,&uart1_rx_buffer[uart1_rx_buffer_end],1);
+    }else if(huart->Instance == USART3){
+        if(uart3_rx_buffer[uart3_rx_buffer_end] == '\n'){
+            uart3_have_sentence = 1;
+        }
+        //HAL_UART_Transmit(&huart1, &uart1_rx_buffer[uart1_rx_buffer_end], 1, 0xFFFF);
+        ++uart3_rx_buffer_end;
+        if(uart3_rx_buffer_end == 128){
+            uart3_rx_buffer_end = 0;
+        }
+        HAL_UART_Receive_IT(&huart3,&uart3_rx_buffer[uart3_rx_buffer_end],1);
     }
 }
 

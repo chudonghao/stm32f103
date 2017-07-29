@@ -10,4 +10,4 @@ include_directories(./Inc
         ./third_party/glm
         )
 add_definitions(cdh USE_HAL_DRIVER STM32F103xE)
-add_executable(cdh step_motor_couple.cpp step_motor_couple.h fix_std.c ./third_party/glm main.cpp key_board.cpp key_board.h laser.cpp laser.h)
+add_executable(cdh step_motor_couple.cpp step_motor_couple.h uart_int.c ./third_party/glm main.cpp key_board.cpp key_board.h laser.h usart3.cpp usart3.h)

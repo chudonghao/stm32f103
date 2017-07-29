@@ -8,11 +8,7 @@
 #include <task.h>
 
 namespace {
-    int current_row = 0;
-    unsigned char key_board_rx_buffer[128];
-    unsigned char key_board_rx_start = 0;
-    unsigned char key_board_rx_end = 0;
-    unsigned int old_time = 0;
+
 }
 
 int cdh::key_board_t::scan() {

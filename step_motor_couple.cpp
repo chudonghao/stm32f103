@@ -133,10 +133,10 @@ namespace cdh {
         next_steps = current;
     }
 
-    int step_motor_couple_t::status() {
+    step_motor_couple_status_e step_motor_couple_t::status() {
         if (::next_steps != ::current_steps)
-            return -1;
-        return 0;
+            return step_motor_couple_status_running_e;
+        return step_motor_couple_status_stopped_e;
     }
 
     glm::ivec2 step_motor_couple_t::map_position_to_steps(const glm::vec2 &position) {
