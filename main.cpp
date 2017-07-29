@@ -108,11 +108,11 @@ namespace {
         u8 red = color >> 11;
         u8 green = (color >> 5) & 0x3f;
         u8 blue = (color) & 0x1f;
-        if (red > 29 && green <= 58) {
+        if (red > 28 && green <= 58) {
             return color_type_red_e;
-        } else if (green > 58 && red <= 29) {
+        } else if (green > 58 && red <= 28) {
             return color_type_green_e;
-        } else if (red < 10 && green < 20 && blue < 10) {
+        } else if (red < 14 && green < 28 && blue < 14) {
             return color_type_black_e;
         }
         return color_type_common_e;
@@ -162,15 +162,19 @@ void camera_refresh(void) {
 //            if(j%camera_h == 0)
 //                printf("line:");
 //            printf("%d,",tmp);
-                LCD->LCD_RAM = color;
+//                LCD->LCD_RAM = color;
                 int fix_y = 319 - y;
-                if (fix_y < 30 || fix_y >= 290)
+                if (fix_y < 30 || fix_y >= 290){
+                    LCD->LCD_RAM = BLACK;
                     continue;
+                }
                 switch (color_type_rgb(color)) {
                     case color_type_red_e:
+                        LCD->LCD_RAM = RED;
                         laser_point_on_canvas.record(x, fix_y);
                         break;
                     case color_type_black_e:
+                        LCD->LCD_RAM = BLACK;
                         if (x < 80 && fix_y >= 120 && fix_y < 200) {//left point
                             left_point_on_canvas.record(x, fix_y);
                         } else if (x >= 160 && fix_y >= 120 && fix_y < 200) {//right point
@@ -181,34 +185,36 @@ void camera_refresh(void) {
                             bottom_point_on_canvas.record(x, fix_y);
                         }
                         break;
+                    default:
+                        LCD->LCD_RAM = GRAY;
                 }
             }
         }
 
         ov_sta = 0;                    //清零帧中断标记
         LCD_Scan_Dir(DFT_SCAN_DIR);    //恢复默认扫描方向
-        //rgb图像处理 结果显示
-        for (int x = 0; x < camera_w; ++x) {
-            for (int y = 0; y < camera_h; ++y) {
-                if (y < 30 || y >= 290) {
-                    continue;
-                }
-                color = LCD_ReadPoint(x, y);
-                switch (color_type_rgb(color)) {
-                    case color_type_red_e:
-                        POINT_COLOR = RED;
-                        break;
-                    case color_type_black_e:
-                        POINT_COLOR = BLACK;
-                        break;
-                    case color_type_green_e:
-                        POINT_COLOR = GREEN;
-                    default:
-                        POINT_COLOR = GRAY;
-                }
-                LCD_DrawPoint(x + 240, y);
-            }
-        }
+//        //rgb图像处理 结果显示
+//        for (int x = 0; x < camera_w; ++x) {
+//            for (int y = 0; y < camera_h; ++y) {
+//                if (y < 30 || y >= 290) {
+//                    continue;
+//                }
+//                color = LCD_ReadPoint(x, y);
+//                switch (color_type_rgb(color)) {
+//                    case color_type_red_e:
+//                        POINT_COLOR = RED;
+//                        break;
+//                    case color_type_black_e:
+//                        POINT_COLOR = BLACK;
+//                        break;
+//                    case color_type_green_e:
+//                        POINT_COLOR = GREEN;
+//                    default:
+//                        POINT_COLOR = GRAY;
+//                }
+//                LCD_DrawPoint(x + 240, y);
+//            }
+//        }
         //计算实际点位
         static char ch1[128];
         sprintf(ch1, "top=(%d,%d) bottom=(%d,%d) left=(%d,%d) right=(%d,%d) laser=(%d,%d)\r\n",
@@ -249,10 +255,11 @@ void camera_refresh(void) {
 
             float x = 615.0f / right_left_pixel * x_pixel;
             float y = 615.0f / top_bottom_pixel * y_pixel;
-
-            sprintf(ch1, "top=(%.3f,%.3f),x=%.3f,y=%.3f\r\n", top.x, top.y, x, y);
+            static int count = 0;
+            sprintf(ch1, "count=%d,x=%.3f,y=%.3f\r\n", count, x, y);
             LCD_ShowString(0, 320 + 16, 800, 16, 16, (u8 *) ch1);
             printf("scp %.3f %.3f\r\n", x, y, sizeof(color_type_e));
+            ++count;
         } else {
             sprintf(ch1, "**************************\r\n");
             LCD_ShowString(0, 320 + 16, 800, 16, 16, (u8 *) ch1);
