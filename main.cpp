@@ -26,70 +26,48 @@ namespace {
     const int camera_w = 240;
     const int camera_h = 320;
 
-    class point_on_canvas_2_t{
-    public:
-
-//        point_on_canvas_2_t():sum(),count(){}
-//        void restart_record(int column){
-//            sum = ivec2();
-//            count = 0;
-//            last_column = column;
-//        }
-//        void record_point(const ivec2& position){
-//            if(position.x - last_column > 1){
-//                restart_record(position.x);
-//            }
-//            sum += position;
-//            ++count;
-//            last_column = position.x;
-//        }
-//        const ivec2 get_position(){
-//            if(count < 20){
-
-//            }
-//            return sum / count;
-//        }
-    };
-
     class point_on_canvas_t {
     public:
-        point_on_canvas_t() : top(-1), left(-1), right(-1), bottom(-1) {}
+        point_on_canvas_t(){}
         ivec2 sum;
         int count;
-        int last_column;
+        int last_record_column;
+        int last_record_row;
 
-        int top;
-        int left;
-        int right;
-        int bottom;
+        void restart_record(int column = 0,int row = 0){
+            sum = ivec2(0,0);
+            count = 0;
+            last_record_column = column;
+            last_record_row = row;
+        }
 
-        const ivec2 get_position(int fix = 15) {
-            int res_x, res_y;
-            int diff_x = right - left, diff_y = top - bottom;
-            if (diff_x > fix)
-                res_x = -2;
-            else
-                res_x = (right + left) / 2;
-            if (diff_y > fix)
-                res_y = -2;
-            else
-                res_y = (top + bottom) / 2;
-            return ivec2(res_x, res_y);
+        const ivec2 get_position(int fix = 5) {
+            if(count){
+                if(count > fix){
+                    return sum / count;
+                }else{
+                    return ivec2(-2,-2);
+                }
+            }else{
+                return ivec2(-1,-1);
+            }
         }
 
         void record(int x, int y) {
-            if (left == -1) {
-                left = x;
+            if(x - last_record_column > 1){//列间隔
+                if(count > 10)
+                    return;
+                restart_record(x,y);
+            }else{
+                if(x - last_record_column == 0){
+                    if(y - last_record_row == -1){
+                        sum += ivec2(x,y);
+                        ++count;
+                    }
+                }
             }
-            if (right == -1 || right < x) {
-                right = x;
-            }
-            if (top == -1) {
-                top = y;
-            }
-            if (bottom == -1 || bottom > y) {
-                bottom = y;
-            }
+            last_record_column = x;
+            last_record_row = y;
         }
     };
 
@@ -112,7 +90,7 @@ namespace {
         OV7670_Light_Mode(0);//白平衡设置  0:自动 1:太阳sunny 2,阴天cloudy 3,办公室office 4,家里home
         OV7670_Color_Saturation(2);
         OV7670_Brightness(2);
-        OV7670_Contrast(3);//对比度设置 0:-2 1:-1 2:0 3:1 4:2
+        OV7670_Contrast(4);//对比度设置 0:-2 1:-1 2:0 3:1 4:2
         OV7670_Special_Effects(0);//特效设置 0:普通模式 1,负片 2,黑白 3,偏红色 4,偏绿色 5,偏蓝色 6,复古
         EXTI8_Init();
         OV7670_Window_Set(12, 176, camera_w, camera_h);              //设置窗口
@@ -164,11 +142,11 @@ void camera_refresh(void) {
         OV7670_RRST = 1;                //复位读指针结束
         OV7670_RCK_H;
 //        printf("red:");
-        top_point_on_canvas = point_on_canvas_t();
-        bottom_point_on_canvas = point_on_canvas_t();
-        left_point_on_canvas = point_on_canvas_t();
-        right_point_on_canvas = point_on_canvas_t();
-        laser_point_on_canvas = point_on_canvas_t();
+        top_point_on_canvas.restart_record();
+        bottom_point_on_canvas.restart_record();
+        left_point_on_canvas.restart_record();
+        right_point_on_canvas.restart_record();
+        laser_point_on_canvas.restart_record();
 
         for (int x = 0; x < camera_w; ++x) {
             for (int y = 0; y < camera_h; ++y) {
@@ -238,14 +216,14 @@ void camera_refresh(void) {
                 bottom_point_on_canvas.get_position().x, bottom_point_on_canvas.get_position().y,
                 left_point_on_canvas.get_position().x, left_point_on_canvas.get_position().y,
                 right_point_on_canvas.get_position().x, right_point_on_canvas.get_position().y,
-                laser_point_on_canvas.get_position(30).x, laser_point_on_canvas.get_position(30).y
+                laser_point_on_canvas.get_position().x, laser_point_on_canvas.get_position().y
         );
         LCD_ShowString(0, 320, 800, 16, 16, (u8 *) ch1);
         vec2 top = top_point_on_canvas.get_position();
         vec2 bottom = bottom_point_on_canvas.get_position();
         vec2 left = left_point_on_canvas.get_position();
         vec2 right = right_point_on_canvas.get_position();
-        vec2 laser = laser_point_on_canvas.get_position(30);
+        vec2 laser = laser_point_on_canvas.get_position();
         if (top.x > 0 && top.y > 0 && bottom.x > 0 && bottom.y > 0
             && left.x > 0 && left.y > 0 && right.x > 0 && right.y > 0
             && laser.x > 0 && laser.y > 0) {
@@ -274,7 +252,7 @@ void camera_refresh(void) {
 
             sprintf(ch1, "top=(%.3f,%.3f),x=%.3f,y=%.3f\r\n", top.x, top.y, x, y);
             LCD_ShowString(0, 320 + 16, 800, 16, 16, (u8 *) ch1);
-            printf("scp %.3f %.3f sizeof(enum)= %d\r\n", x, y, sizeof(color_type_e));
+            printf("scp %.3f %.3f\r\n", x, y, sizeof(color_type_e));
         } else {
             sprintf(ch1, "**************************\r\n");
             LCD_ShowString(0, 320 + 16, 800, 16, 16, (u8 *) ch1);
