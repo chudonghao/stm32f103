@@ -28,40 +28,41 @@ namespace {
 
     class point_on_canvas_t {
     public:
-        point_on_canvas_t(){}
+        point_on_canvas_t() {}
+
         ivec2 sum;
         int count;
         int last_record_column;
         int last_record_row;
 
-        void restart_record(int column = 0,int row = 0){
-            sum = ivec2(0,0);
+        void restart_record(int column = 0, int row = 0) {
+            sum = ivec2(0, 0);
             count = 0;
             last_record_column = column;
             last_record_row = row;
         }
 
         const ivec2 get_position(int fix = 5) {
-            if(count){
-                if(count > fix){
+            if (count) {
+                if (count > fix) {
                     return sum / count;
-                }else{
-                    return ivec2(-2,-2);
+                } else {
+                    return ivec2(-2, -2);
                 }
-            }else{
-                return ivec2(-1,-1);
+            } else {
+                return ivec2(-1, -1);
             }
         }
 
         void record(int x, int y) {
-            if(x - last_record_column > 1){//列间隔
-                if(count > 10)
+            if (x - last_record_column > 1) {//列间隔
+                if (count > 10)
                     return;
-                restart_record(x,y);
-            }else{
-                if(x - last_record_column == 0){
-                    if(y - last_record_row == -1){
-                        sum += ivec2(x,y);
+                restart_record(x, y);
+            } else {
+                if (x - last_record_column == 0) {
+                    if (y - last_record_row == -1) {
+                        sum += ivec2(x, y);
                         ++count;
                     }
                 }
@@ -76,6 +77,7 @@ namespace {
     point_on_canvas_t right_point_on_canvas;
     point_on_canvas_t bottom_point_on_canvas;
     point_on_canvas_t laser_point_on_canvas;
+    point_on_canvas_t green_laser_point_on_canvas;
 
     void lcd_init() {
         LCD_Init();                                     //初始化LCD
@@ -110,7 +112,7 @@ namespace {
         u8 blue = (color) & 0x1f;
         if (red > 28 && green <= 58) {
             return color_type_red_e;
-        } else if (green > 58 && red <= 28) {
+        } else if (green > 60 && red <= 28) {
             return color_type_green_e;
         } else if (red < 14 && green < 28 && blue < 14) {
             return color_type_black_e;
@@ -147,6 +149,7 @@ void camera_refresh(void) {
         left_point_on_canvas.restart_record();
         right_point_on_canvas.restart_record();
         laser_point_on_canvas.restart_record();
+        green_laser_point_on_canvas.restart_record();
 
         for (int x = 0; x < camera_w; ++x) {
             for (int y = 0; y < camera_h; ++y) {
@@ -164,7 +167,7 @@ void camera_refresh(void) {
 //            printf("%d,",tmp);
 //                LCD->LCD_RAM = color;
                 int fix_y = 319 - y;
-                if (fix_y < 30 || fix_y >= 290){
+                if (fix_y < 30 || fix_y >= 290) {
                     LCD->LCD_RAM = BLACK;
                     continue;
                 }
@@ -184,6 +187,10 @@ void camera_refresh(void) {
                         } else if (x >= 80 && x < 160 && fix_y >= 30 && fix_y < 120) {//bottom point
                             bottom_point_on_canvas.record(x, fix_y);
                         }
+                        break;
+                    case color_type_green_e:
+                        LCD->LCD_RAM = GREEN;
+                        green_laser_point_on_canvas.record(x, fix_y);
                         break;
                     default:
                         LCD->LCD_RAM = GRAY;
@@ -217,12 +224,13 @@ void camera_refresh(void) {
 //        }
         //计算实际点位
         static char ch1[128];
-        sprintf(ch1, "top=(%d,%d) bottom=(%d,%d) left=(%d,%d) right=(%d,%d) laser=(%d,%d)\r\n",
+        sprintf(ch1, "top=(%d,%d) bottom=(%d,%d) left=(%d,%d) right=(%d,%d) laser=(%d,%d) green_laser=(%d,%d)\r\n",
                 top_point_on_canvas.get_position().x, top_point_on_canvas.get_position().y,
                 bottom_point_on_canvas.get_position().x, bottom_point_on_canvas.get_position().y,
                 left_point_on_canvas.get_position().x, left_point_on_canvas.get_position().y,
                 right_point_on_canvas.get_position().x, right_point_on_canvas.get_position().y,
-                laser_point_on_canvas.get_position().x, laser_point_on_canvas.get_position().y
+                laser_point_on_canvas.get_position().x, laser_point_on_canvas.get_position().y,
+                green_laser_point_on_canvas.get_position().x, green_laser_point_on_canvas.get_position().y
         );
         LCD_ShowString(0, 320, 800, 16, 16, (u8 *) ch1);
         vec2 top = top_point_on_canvas.get_position();
@@ -230,39 +238,56 @@ void camera_refresh(void) {
         vec2 left = left_point_on_canvas.get_position();
         vec2 right = right_point_on_canvas.get_position();
         vec2 laser = laser_point_on_canvas.get_position();
+        vec2 green_laser = green_laser_point_on_canvas.get_position();
         if (top.x > 0 && top.y > 0 && bottom.x > 0 && bottom.y > 0
-            && left.x > 0 && left.y > 0 && right.x > 0 && right.y > 0
-            && laser.x > 0 && laser.y > 0) {
-            vec2 vec_1;
-            vec2 vec_2;
-            float vec_cross_z;
-            float x_pixel;
-            float y_pixel;
-            float top_bottom_pixel;
-            float right_left_pixel;
+            && left.x > 0 && left.y > 0 && right.x > 0 && right.y > 0) {
+            if (laser.x > 0 && laser.y > 0) {
+                vec2 vec_top_bottom = top - bottom;
+                vec2 vec_right_left = right - left;
+                float top_bottom_pixel = length(vec_top_bottom);
+                float right_left_pixel = length(vec_right_left);
 
-            vec_1 = top - bottom;
-            vec_2 = laser - bottom;
-            vec_cross_z = vec_2.x * vec_1.y - vec_2.y * vec_1.x;
-            top_bottom_pixel = length(vec_1);
-            x_pixel = vec_cross_z / top_bottom_pixel;
+                vec2 vec_laser_bottom = laser - bottom;
+                vec2 vec_laser_left = laser - left;
+                float vec_cross_z;
+                float laser_x_pixel;
+                float laser_y_pixel;
+                float laser_x;
+                float laser_y;
+                vec_cross_z = vec_laser_bottom.x * vec_top_bottom.y - vec_laser_bottom.y * vec_top_bottom.x;
+                laser_x_pixel = vec_cross_z / top_bottom_pixel;
+                vec_cross_z = vec_right_left.x * vec_laser_left.y - vec_right_left.y * vec_laser_left.x;
+                laser_y_pixel = vec_cross_z / right_left_pixel;
 
-            vec_1 = right - left;
-            vec_2 = laser - left;
-            vec_cross_z = vec_1.x * vec_2.y - vec_1.y * vec_2.x;
-            right_left_pixel = length(vec_1);
-            y_pixel = vec_cross_z / right_left_pixel;
-
-            float x = 615.0f / right_left_pixel * x_pixel;
-            float y = 615.0f / top_bottom_pixel * y_pixel;
-            static int count = 0;
-            sprintf(ch1, "count=%d,x=%.3f,y=%.3f\r\n", count, x, y);
-            LCD_ShowString(0, 320 + 16, 800, 16, 16, (u8 *) ch1);
-            printf("scp %.3f %.3f\r\n", x, y, sizeof(color_type_e));
-            ++count;
-        } else {
-            sprintf(ch1, "**************************\r\n");
-            LCD_ShowString(0, 320 + 16, 800, 16, 16, (u8 *) ch1);
+                laser_x = 615.0f / right_left_pixel * laser_x_pixel;
+                laser_y = 615.0f / top_bottom_pixel * laser_y_pixel;
+                static int count = 0;
+                sprintf(ch1, "count=%d,laser=(%.3f,%.3f)\r\n", count, laser_x, laser_y);
+                LCD_ShowString(0, 320 + 16, 800, 16, 16, (u8 *) ch1);
+                printf("scp %.3f %.3f\r\n", laser_x, laser_y, sizeof(color_type_e));
+                ++count;
+                if (green_laser.x > 0 && green_laser.y > 0) {
+                    vec_laser_bottom = green_laser - bottom;
+                    vec_laser_left = green_laser - left;
+                    vec_cross_z = vec_laser_bottom.x * vec_top_bottom.y - vec_laser_bottom.y * vec_top_bottom.x;
+                    laser_x_pixel = vec_cross_z / top_bottom_pixel;
+                    vec_cross_z = vec_right_left.x * vec_laser_left.y - vec_right_left.y * vec_laser_left.x;
+                    laser_y_pixel = vec_cross_z / right_left_pixel;
+                    laser_x = 615.0f / right_left_pixel * laser_x_pixel;
+                    laser_y = 615.0f / top_bottom_pixel * laser_y_pixel;
+                    static int count = 0;
+                    sprintf(ch1, "count=%d,green_laser=(%.3f,%.3f)\r\n", count, laser_x, laser_y);
+                    LCD_ShowString(0, 320 + 32, 800, 16, 16, (u8 *) ch1);
+                    printf("snp %.3f %.3f\r\n", laser_x, laser_y, sizeof(color_type_e));
+                    ++count;
+                }else{
+                    sprintf(ch1, "**************************\r\n");
+                    LCD_ShowString(0, 320 + 32, 800, 16, 16, (u8 *) ch1);
+                }
+            } else {
+                sprintf(ch1, "**************************\r\n");
+                LCD_ShowString(0, 320 + 16, 800, 16, 16, (u8 *) ch1);
+            }
         }
     }
 }
