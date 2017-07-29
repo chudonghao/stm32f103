@@ -26,29 +26,58 @@ namespace {
     const int camera_w = 240;
     const int camera_h = 320;
 
+    class point_on_canvas_2_t{
+    public:
+
+//        point_on_canvas_2_t():sum(),count(){}
+//        void restart_record(int column){
+//            sum = ivec2();
+//            count = 0;
+//            last_column = column;
+//        }
+//        void record_point(const ivec2& position){
+//            if(position.x - last_column > 1){
+//                restart_record(position.x);
+//            }
+//            sum += position;
+//            ++count;
+//            last_column = position.x;
+//        }
+//        const ivec2 get_position(){
+//            if(count < 20){
+
+//            }
+//            return sum / count;
+//        }
+    };
+
     class point_on_canvas_t {
     public:
         point_on_canvas_t() : top(-1), left(-1), right(-1), bottom(-1) {}
+        ivec2 sum;
+        int count;
+        int last_column;
 
         int top;
         int left;
         int right;
         int bottom;
 
-        ivec2 get_position() {
-            int resx, resy;
-            if (right - left > 15)
-                resx = -2;
+        const ivec2 get_position(int fix = 15) {
+            int res_x, res_y;
+            int diff_x = right - left, diff_y = top - bottom;
+            if (diff_x > fix)
+                res_x = -2;
             else
-                resx = (left + right) / 2;
-            if (top - bottom > 15)
-                resy = -2;
+                res_x = (right + left) / 2;
+            if (diff_y > fix)
+                res_y = -2;
             else
-                resy = (top + bottom) / 2;
-            return ivec2(resx, resy);
+                res_y = (top + bottom) / 2;
+            return ivec2(res_x, res_y);
         }
 
-        void add_point(int x, int y) {
+        void record(int x, int y) {
             if (left == -1) {
                 left = x;
             }
@@ -69,11 +98,51 @@ namespace {
     point_on_canvas_t right_point_on_canvas;
     point_on_canvas_t bottom_point_on_canvas;
     point_on_canvas_t laser_point_on_canvas;
+
+    void lcd_init() {
+        LCD_Init();                                     //初始化LCD
+        LCD_Display_Dir(1);
+    }
+
+    bool camera_init() {
+        return OV7670_Init();
+    };
+
+    void camera_config() {
+        OV7670_Light_Mode(0);//白平衡设置  0:自动 1:太阳sunny 2,阴天cloudy 3,办公室office 4,家里home
+        OV7670_Color_Saturation(2);
+        OV7670_Brightness(2);
+        OV7670_Contrast(3);//对比度设置 0:-2 1:-1 2:0 3:1 4:2
+        OV7670_Special_Effects(0);//特效设置 0:普通模式 1,负片 2,黑白 3,偏红色 4,偏绿色 5,偏蓝色 6,复古
+        EXTI8_Init();
+        OV7670_Window_Set(12, 176, camera_w, camera_h);              //设置窗口
+        OV7670_CS = 0;
+    }
+
+    enum color_type_e {
+        color_type_common_e = 0,
+        color_type_red_e,
+        color_type_green_e,
+        color_type_black_e = -1
+    };
+
+    color_type_e color_type_rgb(u16 color) {
+        u8 red = color >> 11;
+        u8 green = (color >> 5) & 0x3f;
+        u8 blue = (color) & 0x1f;
+        if (red > 29 && green <= 58) {
+            return color_type_red_e;
+        } else if (green > 58 && red <= 29) {
+            return color_type_green_e;
+        } else if (red < 10 && green < 20 && blue < 10) {
+            return color_type_black_e;
+        }
+        return color_type_common_e;
+    }
 }
 
 
 extern "C" u8 ov_sta;    //在exit.c里 面定义
-
 
 //更新LCD显示
 void camera_refresh(void) {
@@ -101,7 +170,6 @@ void camera_refresh(void) {
         right_point_on_canvas = point_on_canvas_t();
         laser_point_on_canvas = point_on_canvas_t();
 
-        static int u_or_v = 0;
         for (int x = 0; x < camera_w; ++x) {
             for (int y = 0; y < camera_h; ++y) {
                 color = 0;
@@ -116,105 +184,68 @@ void camera_refresh(void) {
 //            if(j%camera_h == 0)
 //                printf("line:");
 //            printf("%d,",tmp);
-
                 LCD->LCD_RAM = color;
-            }
-        }
-
-//        printf("\r\n");
-//        //rgb图像处理
-//        for (int x = 0; x < camera_h; ++x) {
-//            for (int y = 0; y < camera_w; ++y) {
-//                color = LCD_ReadPoint(x, y);
-//                u16 tmp;
-//                //红点
-//                tmp = color & ((u16) 0x1f << 11);
-//                tmp >>= 11;
-//                if (tmp > 28) {
-//                    POINT_COLOR = RED;
-//                } else if (tmp < 10) {
-//                    POINT_COLOR = BLACK;
-//                } else {
-//                    POINT_COLOR = WHITE;
-//                }
-//                LCD_DrawPoint(x, y + 240);
-//
-//                tmp = color & ((u16) 0x3f << 5);
-//                tmp >>= 5;
-//                if (tmp > 50) {
-//                    POINT_COLOR = GREEN;
-//                } else if (tmp < 20) {
-//                    POINT_COLOR = BLACK;
-//                } else {
-//                    POINT_COLOR = WHITE;
-//                }
-//                LCD_DrawPoint(x + 320, y);
-//
-//                tmp = color & ((u16) 0x1f);
-//                if (tmp > 28) {
-//                    POINT_COLOR = BLUE;
-//                } else if (tmp < 10) {
-//                    POINT_COLOR = BLACK;
-//                } else {
-//                    POINT_COLOR = WHITE;
-//                }
-//                LCD_DrawPoint(x + 320, y + 240);
-//
-//            }
-//        }
-//        return;
-        //yuv图像处理
-        for (int x = 0; x < camera_w; ++x) {
-            for (int y = 0; y < camera_h; ++y) {
                 int fix_y = 319 - y;
-                int point_type = 0;
-                color = LCD_ReadPoint(y, x);
-                u16 tmp;
-                //红点
-                tmp = color & ((u16) 0xff << 8);
-                if (tmp > ((u16) 200 << 8)) {
-                    point_type = 1;
-                    POINT_COLOR = WHITE;
-                } else if (tmp < ((u16) 100 << 8)) {
-                    point_type = -1;
-                    POINT_COLOR = BLACK;
-                } else {
-                    POINT_COLOR = GRAY;
-                }
-                LCD_DrawPoint(y, x + 240);
-
-                if (point_type == -1) {
-                    if (x < 80 && fix_y >= 120 && fix_y < 200) {//left point
-                        left_point_on_canvas.add_point(x, fix_y);
-                    } else if (x >= 160 && fix_y >= 120 && fix_y < 200) {//right point
-                        right_point_on_canvas.add_point(x, fix_y);
-                    } else if (x >= 80 && x < 160 && fix_y >= 200 && fix_y < 290) {//top point
-                        top_point_on_canvas.add_point(x, fix_y);
-                    } else if (x >= 80 && x < 160 && fix_y >= 30 && fix_y < 120) {//bottom point
-                        bottom_point_on_canvas.add_point(x, fix_y);
-                    }
-                } else if (point_type == 1) {
-                    if (fix_y >= 30 && fix_y < 290)
-                        laser_point_on_canvas.add_point(x, fix_y);
+                if (fix_y < 30 || fix_y >= 290)
+                    continue;
+                switch (color_type_rgb(color)) {
+                    case color_type_red_e:
+                        laser_point_on_canvas.record(x, fix_y);
+                        break;
+                    case color_type_black_e:
+                        if (x < 80 && fix_y >= 120 && fix_y < 200) {//left point
+                            left_point_on_canvas.record(x, fix_y);
+                        } else if (x >= 160 && fix_y >= 120 && fix_y < 200) {//right point
+                            right_point_on_canvas.record(x, fix_y);
+                        } else if (x >= 80 && x < 160 && fix_y >= 200 && fix_y < 290) {//top point
+                            top_point_on_canvas.record(x, fix_y);
+                        } else if (x >= 80 && x < 160 && fix_y >= 30 && fix_y < 120) {//bottom point
+                            bottom_point_on_canvas.record(x, fix_y);
+                        }
+                        break;
                 }
             }
         }
+
         ov_sta = 0;                    //清零帧中断标记
         LCD_Scan_Dir(DFT_SCAN_DIR);    //恢复默认扫描方向
+        //rgb图像处理 结果显示
+        for (int x = 0; x < camera_w; ++x) {
+            for (int y = 0; y < camera_h; ++y) {
+                if (y < 30 || y >= 290) {
+                    continue;
+                }
+                color = LCD_ReadPoint(x, y);
+                switch (color_type_rgb(color)) {
+                    case color_type_red_e:
+                        POINT_COLOR = RED;
+                        break;
+                    case color_type_black_e:
+                        POINT_COLOR = BLACK;
+                        break;
+                    case color_type_green_e:
+                        POINT_COLOR = GREEN;
+                    default:
+                        POINT_COLOR = GRAY;
+                }
+                LCD_DrawPoint(x + 240, y);
+            }
+        }
+        //计算实际点位
         static char ch1[128];
         sprintf(ch1, "top=(%d,%d) bottom=(%d,%d) left=(%d,%d) right=(%d,%d) laser=(%d,%d)\r\n",
                 top_point_on_canvas.get_position().x, top_point_on_canvas.get_position().y,
                 bottom_point_on_canvas.get_position().x, bottom_point_on_canvas.get_position().y,
                 left_point_on_canvas.get_position().x, left_point_on_canvas.get_position().y,
                 right_point_on_canvas.get_position().x, right_point_on_canvas.get_position().y,
-                laser_point_on_canvas.get_position().x, laser_point_on_canvas.get_position().y
+                laser_point_on_canvas.get_position(30).x, laser_point_on_canvas.get_position(30).y
         );
         LCD_ShowString(0, 320, 800, 16, 16, (u8 *) ch1);
         vec2 top = top_point_on_canvas.get_position();
         vec2 bottom = bottom_point_on_canvas.get_position();
         vec2 left = left_point_on_canvas.get_position();
         vec2 right = right_point_on_canvas.get_position();
-        vec2 laser = laser_point_on_canvas.get_position();
+        vec2 laser = laser_point_on_canvas.get_position(30);
         if (top.x > 0 && top.y > 0 && bottom.x > 0 && bottom.y > 0
             && left.x > 0 && left.y > 0 && right.x > 0 && right.y > 0
             && laser.x > 0 && laser.y > 0) {
@@ -241,8 +272,9 @@ void camera_refresh(void) {
             float x = 615.0f / right_left_pixel * x_pixel;
             float y = 615.0f / top_bottom_pixel * y_pixel;
 
-            sprintf(ch1, "top=(%.3f,%.3f),x=%.3f,y=%.3f\r\n", top.x, top.y, x,y);
+            sprintf(ch1, "top=(%.3f,%.3f),x=%.3f,y=%.3f\r\n", top.x, top.y, x, y);
             LCD_ShowString(0, 320 + 16, 800, 16, 16, (u8 *) ch1);
+            printf("scp %.3f %.3f sizeof(enum)= %d\r\n", x, y, sizeof(color_type_e));
         } else {
             sprintf(ch1, "**************************\r\n");
             LCD_ShowString(0, 320 + 16, 800, 16, 16, (u8 *) ch1);
@@ -260,12 +292,11 @@ int main(void) {
     SystemCoreClockUpdate();
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); //设置中断优先级分组为组2：2位抢占优先级，2位响应优先级
     delay_init();                                   //延时函数初始化
-    LCD_Init();                                     //初始化LCD
-    LCD_Display_Dir(1);
     uart_init(115200);
+    lcd_init();
 
     POINT_COLOR = RED;                                //设置字体为红色
-    while (OV7670_Init())                            //初始化OV7670
+    while (camera_init())                            //初始化OV7670
     {
         u8 ch[] = "OV7670 Error!!";
         LCD_ShowString(30, 230, 200, 16, 16, ch);
@@ -273,34 +304,28 @@ int main(void) {
         LCD_Fill(30, 230, 239, 246, WHITE);
         delay_ms(200);
     }
+    camera_config();
     u8 ch[] = "OV7670 Init OK";
     LCD_ShowString(30, 230, 200, 16, 16, ch);
-    OV7670_Light_Mode(0);
-    OV7670_Color_Saturation(2);
-    OV7670_Brightness(2);
-    OV7670_Contrast(2);
-    OV7670_Special_Effects(0);
-    EXTI8_Init();                                   //使能定时器捕获
+
 //    OV7670_Window_Set(12, 176, 240, 320);              //设置窗口
     //SCCB_WR_Reg(0x12,0x24);
 
-    //设置为QVGA YUV
-    //参考 https://www.amobbs.com/thread-5490146-1-1.html
-    //{ 0x12, 0x10 }
-    //{ 0x3a, 0x14 }使用固定UV输出
-    //{ 0x3d, 0x80 }使用固定UV输出
-    //{ 0x67, 0x11 }固定U值，0x11，方便测试
-    //{ 0x68, 0xFF }固定V值，0xFF，方便测试
-    //{ 0x40, 0xC0 }
-    SCCB_WR_Reg(0x12, 0x10);
-    //SCCB_WR_Reg(0x3a, 0x14);
-    //SCCB_WR_Reg(0x3d, 0x80);
-    //SCCB_WR_Reg(0x67, 0x11);
-    //SCCB_WR_Reg(0x68, 0xFF);
-    SCCB_WR_Reg(0x40, 0xC0);
+//    //设置为QVGA YUV
+//    //参考 https://www.amobbs.com/thread-5490146-1-1.html
+//    //{ 0x12, 0x10 }
+//    //{ 0x3a, 0x14 }使用固定UV输出
+//    //{ 0x3d, 0x80 }使用固定UV输出
+//    //{ 0x67, 0x11 }固定U值，0x11，方便测试
+//    //{ 0x68, 0xFF }固定V值，0xFF，方便测试
+//    //{ 0x40, 0xC0 }
+//    SCCB_WR_Reg(0x12, 0x10);
+//    //SCCB_WR_Reg(0x3a, 0x14);
+//    //SCCB_WR_Reg(0x3d, 0x80);
+//    //SCCB_WR_Reg(0x67, 0x11);
+//    //SCCB_WR_Reg(0x68, 0xFF);
+//    SCCB_WR_Reg(0x40, 0xC0);
 
-    OV7670_Window_Set(12, 176, camera_w, camera_h);              //设置窗口
-    OV7670_CS = 0;
     LCD_Clear(BLACK);
 
     xTaskCreate(main_task, 0, 200, 0, 1, 0);
