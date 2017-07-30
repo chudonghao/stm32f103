@@ -14,6 +14,7 @@
 using namespace cdh;
 using namespace std;
 using namespace glm;
+static bool follow_green_laser_point = false;
 extern "C" void key_board_task(const void *){
     static int old_key = -1;
     static int delay_count = 0;
@@ -22,8 +23,7 @@ extern "C" void key_board_task(const void *){
             static vec2 position;
             int count = sscanf(usart3_t::c_str(),"P%f,%f",&position.x,&position.y);
             if(count == 2){
-                step_motor_couple_t::set_next_steps(step_motor_couple_t::map_position_to_steps(position));
-                step_motor_couple_t::step();
+                while(step_motor_couple_t::set_next_steps(step_motor_couple_t::map_position_to_steps(position)) == -1){}
             }
         }
         int key = key_board_t::scan();
@@ -41,6 +41,8 @@ extern "C" void key_board_task(const void *){
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.y+=1;
             step_motor_couple_t::set_next_steps(cur);
+        }else if(key == 2){
+            follow_green_laser_point = !follow_green_laser_point;
         }else if(key == 4){
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.x-=1;
@@ -54,7 +56,6 @@ extern "C" void key_board_task(const void *){
             cur.y-=1;
             step_motor_couple_t::set_next_steps(cur);
         }
-        step_motor_couple_t::step();
     }
 }
 static float current_x = 0,current_y = 0;
@@ -76,6 +77,7 @@ extern "C" void laser_task(const void*){
                 usart3_t::print(ch);
             }
         }
+        step_motor_couple_t::step();
     }
 }
 extern "C" void main_task() {
@@ -102,7 +104,6 @@ extern "C" void main_task() {
             }
             printf("set next steps:(x,y)=(%.3f,%.3f)\r\n", x, y);
             step_motor_couple_t::set_next_steps(ivec2(x,y));
-            step_motor_couple_t::step();
         }else if(strcmp(ch, "scp") == 0 || strcmp(ch, "set_current_position") == 0){
             //TODO scp 已经不是原有的意思
             //这里不再修正坐标，修正暂时使用 scs
@@ -117,16 +118,19 @@ extern "C" void main_task() {
             current_x = x;
             current_y = y;
         }else if(strcmp(ch, "snp") == 0 || strcmp(ch, "set_next_position") == 0){
+            //TODO snp 已经不是原有的意思
+            //暂不使用此功能
             int res_number = scanf("%f%f", &x, &y);
             if(res_number != 2){
                 printf("scanf error.");
             }
-            ivec2 steps = step_motor_couple_t::current_steps();
-            printf("set next position:(x,y)=(%.3f,%.3f),steps=(%d,%d)", x, y);
-            steps = step_motor_couple_t::map_position_to_steps(vec2(x,y));
-            printf(",next_steps=(%d,%d)\r\n",steps.x,steps.y);
-            step_motor_couple_t::set_next_steps(steps);
-            step_motor_couple_t::step();
+            if(follow_green_laser_point){
+                ivec2 steps = step_motor_couple_t::current_steps();
+                printf("set next position:(x,y)=(%.3f,%.3f),steps=(%d,%d)", x, y);
+                steps = step_motor_couple_t::map_position_to_steps(vec2(x,y));
+                printf(",next_steps=(%d,%d)\r\n",steps.x,steps.y);
+                step_motor_couple_t::set_next_steps(steps);
+            }
         }else{
             printf("%s %f %f\r\n",ch,x,y);
         }
