@@ -114,7 +114,7 @@ namespace {
             return color_type_red_e;
         } else if (green >= 60 && red < 29) {
             return color_type_green_e;
-        } else if (red < 14 && green < 28 && blue < 14) {
+        } else if (red < 17 && green < 33 && blue < 17) {
             return color_type_black_e;
         }
         return color_type_common_e;
@@ -139,7 +139,7 @@ void camera_refresh(void) {
         LCD_WriteRAM_Prepare();     //开始写入GRAM
         OV7670_RRST = 0;                //开始复位读指针
         OV7670_RCK_L;
-        OV7670_RCK_H;
+        OV7670_RCK_H;                                          
         OV7670_RCK_L;
         OV7670_RRST = 1;                //复位读指针结束
         OV7670_RCK_H;
@@ -239,6 +239,9 @@ void camera_refresh(void) {
         vec2 right = right_point_on_canvas.get_position();
         vec2 laser = laser_point_on_canvas.get_position();
         vec2 green_laser = green_laser_point_on_canvas.get_position();
+        LCD_DrawLine(laser.x,0,laser.x,320);
+        LCD_DrawLine(0,320 - laser.y,240,320 - laser.y);
+        POINT_COLOR = RED;
         if (top.x > 0 && top.y > 0 && bottom.x > 0 && bottom.y > 0
             && left.x > 0 && left.y > 0 && right.x > 0 && right.y > 0) {
             if (laser.x > 0 && laser.y > 0) {
@@ -246,7 +249,6 @@ void camera_refresh(void) {
                 vec2 vec_right_left = right - left;
                 float top_bottom_pixel = length(vec_top_bottom);
                 float right_left_pixel = length(vec_right_left);
-
                 vec2 vec_laser_bottom = laser - bottom;
                 vec2 vec_laser_left = laser - left;
                 float vec_cross_z;
@@ -258,7 +260,6 @@ void camera_refresh(void) {
                 laser_x_pixel = vec_cross_z / top_bottom_pixel;
                 vec_cross_z = vec_right_left.x * vec_laser_left.y - vec_right_left.y * vec_laser_left.x;
                 laser_y_pixel = vec_cross_z / right_left_pixel;
-
                 laser_x = 615.0f / right_left_pixel * laser_x_pixel;
                 laser_y = 615.0f / top_bottom_pixel * laser_y_pixel;
                 static int count = 0;
