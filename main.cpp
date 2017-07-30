@@ -110,9 +110,9 @@ namespace {
         u8 red = color >> 11;
         u8 green = (color >> 5) & 0x3f;
         u8 blue = (color) & 0x1f;
-        if (red > 28 && green <= 58) {
+        if (red >= 29 && green < 60) {
             return color_type_red_e;
-        } else if (green > 60 && red <= 28) {
+        } else if (green >= 60 && red < 29) {
             return color_type_green_e;
         } else if (red < 14 && green < 28 && blue < 14) {
             return color_type_black_e;
