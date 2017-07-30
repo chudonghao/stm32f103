@@ -69,7 +69,7 @@ extern "C" void laser_task(const void*){
             new_position = 0;
         }else{
             laser_t::on();
-            if(new_shoot == true && new_position > 2){
+            if(new_shoot == true && new_position > 4){
                 new_shoot = false;
                 new_position = 0;
                 static char ch[128];
