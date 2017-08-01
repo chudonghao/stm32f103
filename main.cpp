@@ -5,7 +5,6 @@
 #include <cstring>
 #include "step_motor_couple.h"
 #include "key_board.h"
-#include "laser.h"
 #include "usart3.h"
 #include <main.h>
 #include <gpio.h>
@@ -26,11 +25,14 @@ extern "C" void key_board_task(const void *){
                 while(step_motor_couple_t::set_next_steps(step_motor_couple_t::map_position_to_steps(position)) == -1){}
             }
         }
+        
         int key = key_board_t::scan();
         if(old_key == key && delay_count < 10){
-            osDelay(30);
             ++delay_count;
-            continue;
+            if(delay_count > 0){
+                osDelay(30);
+                continue;
+            }
         }else if(old_key != key){
             old_key = key;
             delay_count = 0;
@@ -56,30 +58,13 @@ extern "C" void key_board_task(const void *){
             cur.y-=1;
             step_motor_couple_t::set_next_steps(cur);
         }
+        osDelay(30);
     }
 }
 static float current_x = 0,current_y = 0;
 static int new_position = 0;
 static bool new_shoot = false;
-extern "C" void laser_task(const void*){
-    for(;;){
-        if(step_motor_couple_t::status() == -1){
-            laser_t::off();
-            new_shoot = true;
-            new_position = 0;
-        }else{
-            laser_t::on();
-            if(new_shoot == true && new_position > 4){
-                new_shoot = false;
-                new_position = 0;
-                static char ch[128];
-                sprintf(ch,"P%.3f,%.3f\r\n", current_x, current_y);
-                usart3_t::print(ch);
-            }
-        }
-        step_motor_couple_t::step();
-    }
-}
+
 extern "C" void main_task() {
     printf("inited.\r\n");
     printf("test step couple.\r\n");
