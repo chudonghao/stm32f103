@@ -413,6 +413,11 @@
               <FileType>8</FileType>
               <FilePath>.\main.cpp</FilePath>
             </File>
+            <File>
+              <FileName>usart1.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\usart1.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -477,11 +482,6 @@
               <FileName>delay.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\third_party\stm32f1_warship_v3\camera_test\SYSTEM\delay\delay.c</FilePath>
-            </File>
-            <File>
-              <FileName>usart.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\third_party\stm32f1_warship_v3\camera_test\SYSTEM\usart\usart.c</FilePath>
             </File>
           </Files>
         </Group>
