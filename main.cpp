@@ -6,6 +6,7 @@
 #include "step_motor_couple.h"
 #include "key_board.h"
 #include "usart3.h"
+#include "undecided.h"
 #include <main.h>
 #include <gpio.h>
 #include <cmsis_os.h>
@@ -13,19 +14,13 @@
 using namespace cdh;
 using namespace std;
 using namespace glm;
-static bool follow_green_laser_point = false;
+namespace {
+    track_t track;
+}
 extern "C" void key_board_task(const void *){
     static int old_key = -1;
     static int delay_count = 0;
     for (;;) {
-        if(usart3_t::have_sentence()){
-            static vec2 position;
-            int count = sscanf(usart3_t::c_str(),"P%f,%f",&position.x,&position.y);
-            if(count == 2){
-                while(step_motor_couple_t::set_next_steps(step_motor_couple_t::map_position_to_steps(position)) == -1){}
-            }
-        }
-        
         int key = key_board_t::scan();
         if(old_key == key && delay_count < 10){
             ++delay_count;
@@ -38,13 +33,11 @@ extern "C" void key_board_task(const void *){
             delay_count = 0;
         }
         if(key == 0){
-            step_motor_couple_t::set_current_steps(ivec2(0,-20));
+            track.set_base();
         }else if(key == 1){
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.y+=1;
             step_motor_couple_t::set_next_steps(cur);
-        }else if(key == 2){
-            follow_green_laser_point = !follow_green_laser_point;
         }else if(key == 4){
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.x-=1;
@@ -61,63 +54,36 @@ extern "C" void key_board_task(const void *){
         osDelay(30);
     }
 }
-static float current_x = 0,current_y = 0;
-static int new_position = 0;
-static bool new_shoot = false;
 
 extern "C" void main_task() {
+
     printf("inited.\r\n");
-    printf("test step couple.\r\n");
     for (;;) {
         static char ch[128];
         scanf("%s", ch);
-        float x, y;
-        if (strcmp(ch, "scs") == 0 || strcmp(ch, "set_current_steps") == 0) {
-            int res_number = scanf("%f%f", &x, &y);
-            if(res_number != 2){
-                printf("scanf error.");
+        if (strcmp(ch, "data") == 0) {
+            float ms, y_left,y_right,ball_position;
+            scanf("%f%f%f%f",&ms, &y_left,&y_right,&ball_position);
+            printf("get data:%f %f %f %f\r\n", ms, y_left,y_right,ball_position);
+        }else if(strcmp(ch, "test") == 0){
+            float dip_angle,height;
+            scanf("%f%f",&dip_angle, &height);
+            printf("test:%f %f\r\n", dip_angle,height);
+            track.dip_angle(dip_angle);
+            track.height(height);
+            while(track.motor_height() == -1){
+                step_motor_couple_t::step();
             }
-            if(step_motor_couple_t::status() == step_motor_couple_status_running_e){
-                continue;
+            while(track.motor_dip_angle() == -1){
+                step_motor_couple_t::step();
             }
-            printf("set current steps:(x,y)=(%.3f,%.3f)\r\n", x, y);
-            step_motor_couple_t::set_current_steps(ivec2(x,y));
-        }else if(strcmp(ch, "sns") == 0 || strcmp(ch, "set_next_steps") == 0){
-            int res_number = scanf("%f%f", &x, &y);
-            if(res_number != 2){
-                printf("scanf error.");
-            }
-            printf("set next steps:(x,y)=(%.3f,%.3f)\r\n", x, y);
-            step_motor_couple_t::set_next_steps(ivec2(x,y));
-        }else if(strcmp(ch, "scp") == 0 || strcmp(ch, "set_current_position") == 0){
-            //TODO scp 已经不是原有的意思
-            //这里不再修正坐标，修正暂时使用 scs
-            int res_number = scanf("%f%f", &x, &y);
-            if(res_number != 2){
-                printf("scanf error.");
-            }
-            if(step_motor_couple_t::status() == step_motor_couple_status_running_e){
-                continue;
-            }
-            ++new_position;
-            current_x = x;
-            current_y = y;
-        }else if(strcmp(ch, "snp") == 0 || strcmp(ch, "set_next_position") == 0){
-            //TODO snp 已经不是原有的意思
-            //暂不使用此功能
-            int res_number = scanf("%f%f", &x, &y);
-            if(res_number != 2){
-                printf("scanf error.");
-            }
-            if(follow_green_laser_point){
-                ivec2 steps = step_motor_couple_t::current_steps();
-                printf("set next position:(x,y)=(%.3f,%.3f),steps=(%d,%d)", x, y);
-                steps = step_motor_couple_t::map_position_to_steps(vec2(x,y));
-                printf(",next_steps=(%d,%d)\r\n",steps.x,steps.y);
-                step_motor_couple_t::set_next_steps(steps);
-            }
+        }else if(strcmp(ch, "test2") == 0){
+            float height_base;
+            scanf("%f",&height_base);
+            printf("test2:%f\r\n", height_base);
+            track.height_base(height_base);
         }else{
-            printf("%s %f %f\r\n",ch,x,y);
+            printf("unknown func:%s\r\n",ch);
         }
     }
 }

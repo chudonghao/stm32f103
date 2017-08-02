@@ -18,7 +18,10 @@ namespace cdh{
         static void step();
         static void set_current_steps(const glm::ivec2 &);
         static step_motor_couple_status_e status();
-        static glm::ivec2 map_position_to_steps(const glm::vec2&);
+        static glm::ivec2 map_angle_to_steps(const glm::vec2&);
+        static glm::ivec2 map_length_to_steps(const glm::vec2&);
+        static glm::vec2 current_angle();
+        static glm::vec2 current_length();
         static glm::ivec2 current_steps();
     };
 }

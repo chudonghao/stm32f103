@@ -12,6 +12,9 @@
 
 using namespace glm;
 namespace {
+    const static int step_per_loop = 400;
+    const static float r = 10.f;
+    const static float pi = 3.141592653f;
     ivec2 current_steps;
     ivec2 next_steps;
 }
@@ -100,27 +103,27 @@ namespace cdh {
         }
         if (steps_dir.x != 0 || steps_dir.y != 0)
             if (steps_dir.x == 0) {
-                __HAL_TIM_SET_AUTORELOAD(&htim3, 10000 - 1);
+                __HAL_TIM_SET_AUTORELOAD(&htim3, 2000 - 1);
             } else if (steps_dir.y == 0) {
-                __HAL_TIM_SET_AUTORELOAD(&htim2, 10000 - 1);
+                __HAL_TIM_SET_AUTORELOAD(&htim2, 2000 - 1);
             } else {
                 if (steps_dir.x >= steps_dir.y) {
                     float k = steps_dir.x / steps_dir.y;
-                    if (k > (float) 65536 / 10000) {
-                        __HAL_TIM_SET_AUTORELOAD(&htim2, 10000 - 1);
+                    if (k > (float) 65536 / 2000) {
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 2000 - 1);
                         __HAL_TIM_SET_AUTORELOAD(&htim3, 65536 - 1);
                     } else {
-                        __HAL_TIM_SET_AUTORELOAD(&htim2, 10000 - 1);
-                        __HAL_TIM_SET_AUTORELOAD(&htim3, 10000 * k - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 2000 - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 2000 * k - 1);
                     }
                 } else {
                     float k = steps_dir.y / steps_dir.x;
-                    if (k > (float) 65536 / 10000) {
-                        __HAL_TIM_SET_AUTORELOAD(&htim3, 10000 - 1);
+                    if (k > (float) 65536 / 2000) {
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 2000 - 1);
                         __HAL_TIM_SET_AUTORELOAD(&htim2, 65536 - 1);
                     } else {
-                        __HAL_TIM_SET_AUTORELOAD(&htim3, 10000 - 1);
-                        __HAL_TIM_SET_AUTORELOAD(&htim2, 10000 * k - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 2000 - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 2000 * k - 1);
                     }
                 }
             }
@@ -139,19 +142,28 @@ namespace cdh {
         return step_motor_couple_status_stopped_e;
     }
 
-    glm::ivec2 step_motor_couple_t::map_position_to_steps(const glm::vec2 &position) {
-        float tan_a = position.x / 3000;
-        float tan_b = (position.y - 120) / sqrt(3000 * 3000 + position.x * position.x);
-        float a = atan(tan_a);
-        float b = atan(tan_b);
-        ivec2 res;
-        res.x = a / 2 / 3.141592653f * 3200;
-        res.y = b / 2 / 3.141592653f * 3200;
-        return res;
-    }
-
     glm::ivec2 step_motor_couple_t::current_steps() {
         return ::current_steps;
+    }
+
+    glm::ivec2 step_motor_couple_t::map_angle_to_steps(const glm::vec2 & angle) {
+        vec2 steps = angle / 2.f / pi * (float)step_per_loop;
+        return steps;
+    }
+
+    glm::ivec2 step_motor_couple_t::map_length_to_steps(const glm::vec2 & length) {
+        vec2 steps = length / r / 2.f / pi * (float)step_per_loop;
+        return steps;
+    }
+
+    glm::vec2 step_motor_couple_t::current_angle() {
+        vec2 angle = vec2(::current_steps) / (float)step_per_loop * 2.f * pi;
+        return angle;
+    }
+
+    glm::vec2 step_motor_couple_t::current_length() {
+        vec2 length = vec2(::current_steps) / (float)step_per_loop * 2.f * pi * r;
+        return glm::vec2();
     }
 
 }

@@ -36,17 +36,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
             uart1_rx_buffer_end = 0;
         }
         HAL_UART_Receive_IT(&huart1,&uart1_rx_buffer[uart1_rx_buffer_end],1);
-    }else if(huart->Instance == USART3){
-        if(uart3_rx_buffer[uart3_rx_buffer_end] == '\n'){
-            uart3_have_sentence = 1;
-        }
-        //HAL_UART_Transmit(&huart1, &uart1_rx_buffer[uart1_rx_buffer_end], 1, 0xFFFF);
-        ++uart3_rx_buffer_end;
-        if(uart3_rx_buffer_end == 128){
-            uart3_rx_buffer_end = 0;
-        }
-        HAL_UART_Receive_IT(&huart3,&uart3_rx_buffer[uart3_rx_buffer_end],1);
     }
+//    else if(huart->Instance == USART3){
+//        if(uart3_rx_buffer[uart3_rx_buffer_end] == '\n'){
+//            uart3_have_sentence = 1;
+//        }
+//        //HAL_UART_Transmit(&huart1, &uart1_rx_buffer[uart1_rx_buffer_end], 1, 0xFFFF);
+//        ++uart3_rx_buffer_end;
+//        if(uart3_rx_buffer_end == 128){
+//            uart3_rx_buffer_end = 0;
+//        }
+//        HAL_UART_Receive_IT(&huart3,&uart3_rx_buffer[uart3_rx_buffer_end],1);
+//    }
 }
 
 int fgetc(FILE *f){
