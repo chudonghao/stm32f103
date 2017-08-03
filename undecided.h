@@ -57,8 +57,8 @@ namespace cdh {
             length.x = height_ - (height_base_) * tan(dip_angle_);
             length.y = height_ + (590.f - height_base_) * tan(dip_angle_);
             ivec2 steps = step_motor_couple_t::map_length_to_steps(length);
-            printf("motor_dip_angle length=(%f,%f),steps=(%d,%d)\r\n",length.x,length.y,steps.x,steps.y);
-            res = step_motor_couple_t::set_next_steps(steps);
+            //printf("motor_dip_angle length=(%f,%f),steps=(%d,%d)\r\n",length.x,length.y,steps.x,steps.y);
+            res = step_motor_couple_t::set_next_steps(steps,true);
             step_motor_couple_t::step();
             return res;
         }

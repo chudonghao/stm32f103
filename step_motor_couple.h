@@ -14,7 +14,7 @@ namespace cdh{
     class step_motor_couple_t {
     public:
         static void test();
-        static int set_next_steps(const glm::ivec2 &);
+        static int set_next_steps(const glm::ivec2 &,bool force = false);
         static void step();
         static void set_current_steps(const glm::ivec2 &);
         static step_motor_couple_status_e status();

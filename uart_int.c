@@ -14,28 +14,49 @@
 #define PUTCHAR_PROTOTYPE
 #define GETCHAR_PROTOTYPE
 //#endif /* __GNUC__ */
+static unsigned char uart1_tx_buffer[128];
+static unsigned char uart1_tx_buffer_start;
+static unsigned char uart1_tx_buffer_end;
+static unsigned char uart1_tx_stoped = 1;
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
+    if(huart->Instance == USART1){
+        ++uart1_tx_buffer_start;
+        if(uart1_tx_buffer_start == 128){
+            uart1_tx_buffer_start = 0;
+        }
+        if(uart1_tx_buffer_end != uart1_tx_buffer_start){
+            HAL_UART_Transmit_IT(&huart1, (unsigned char * ) & uart1_tx_buffer[uart1_tx_buffer_start], 1);
+        }else{
+            uart1_tx_stoped = 1;
+        }
+    }
+}
 int fputc(int ch, FILE *f){
-    /* Place your implementation of fputc here */
-    /* e.g. write a character to the USART1 and Loop until the end of transmission */
-    HAL_UART_Transmit(&huart1, (unsigned char * ) & ch, 1, 0xFFFF);
+    uart1_tx_buffer[uart1_tx_buffer_end++] = ch;
+    if(uart1_tx_buffer_end == 128){
+        uart1_tx_buffer_end = 0;
+    }
+    if(uart1_tx_stoped){
+        uart1_tx_stoped = 0;
+        HAL_UART_Transmit_IT(&huart1, (unsigned char * ) & uart1_tx_buffer[uart1_tx_buffer_start], 1);
+    }
     return ch;
 }
 static unsigned char uart1_rx_buffer[128];
 static unsigned char uart1_rx_buffer_start;
 static unsigned char uart1_rx_buffer_end;
-
-unsigned char uart3_rx_buffer[128];
-unsigned char uart3_rx_buffer_start;
-unsigned char uart3_rx_buffer_end;
-int uart3_have_sentence = 0;
+static unsigned char uart1_rx_data;
+//unsigned char uart3_rx_buffer[128];
+//unsigned char uart3_rx_buffer_start;
+//unsigned char uart3_rx_buffer_end;
+//int uart3_have_sentence = 0;
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
     if(huart->Instance == USART1){
-        //HAL_UART_Transmit(&huart1, &uart1_rx_buffer[uart1_rx_buffer_end], 1, 0xFFFF);
-        ++uart1_rx_buffer_end;
+        uart1_rx_buffer[uart1_rx_buffer_end++] = uart1_rx_data;
         if(uart1_rx_buffer_end == 128){
             uart1_rx_buffer_end = 0;
         }
-        HAL_UART_Receive_IT(&huart1,&uart1_rx_buffer[uart1_rx_buffer_end],1);
+        HAL_UART_Receive_IT(&huart1,&uart1_rx_data,1);
     }
 //    else if(huart->Instance == USART3){
 //        if(uart3_rx_buffer[uart3_rx_buffer_end] == '\n'){
@@ -53,7 +74,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 int fgetc(FILE *f){
     unsigned char res = 0;
     while(uart1_rx_buffer_start == uart1_rx_buffer_end){
-        HAL_UART_Receive_IT(&huart1,&uart1_rx_buffer[uart1_rx_buffer_end],1);
+        HAL_UART_Receive_IT(&huart1,&uart1_rx_data,1);
     }
     res = uart1_rx_buffer[uart1_rx_buffer_start++];
     if(uart1_rx_buffer_start == 128){
