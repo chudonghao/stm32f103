@@ -54,7 +54,7 @@ namespace {
         }
 
         void record(const ivec2 &record) {
-            sum+=record;
+            sum += record;
             ++count;
 //            if (last_record.y - record.y > 1) {//ÁÐ¼ä¸ô
 //                if (count > 10)
@@ -74,6 +74,7 @@ namespace {
 
     point_on_canvas_t left_point_on_canvas;
     point_on_canvas_t right_point_on_canvas;
+    point_on_canvas_t red_point_on_canvas;
     point_on_canvas_t ball_point_on_canvas;
 
     void lcd_init() {
@@ -156,7 +157,7 @@ namespace {
         if (y < 70) {
             return color_type_black_e;
         }
-        if (y > 195){
+        if (y > 195) {
             return color_type_bright_e;
         }
         return color_type_common_e;
@@ -192,7 +193,7 @@ void camera_refresh(void) {
         left_point_on_canvas.restart_record();
         right_point_on_canvas.restart_record();
         ball_point_on_canvas.restart_record();
-
+        red_point_on_canvas.restart_record();
         for (int y = camera_w - 1; y >= 0; --y) {
             for (int x = camera_h - 2; x >= 0; x = x - 2) {
                 static unsigned char y0 = 0;
@@ -249,6 +250,9 @@ void camera_refresh(void) {
                 if (y >= 100 && y < 180) {
                     switch (color_type_yuv(y0, u, v)) {
                         case color_type_red_e:
+                            if (x >= 15 && x < 305) {
+                                red_point_on_canvas.record(ivec2(x + 1, y));
+                            }
                             break;
                         case color_type_black_e:
                             if (x < 30) {
@@ -269,6 +273,9 @@ void camera_refresh(void) {
                     }
                     switch (color_type_yuv(y1, u, v)) {
                         case color_type_red_e:
+                            if (x >= 15 && x < 305) {
+                                red_point_on_canvas.record(ivec2(x, y));
+                            }
                             break;
                         case color_type_black_e:
                             if (x < 30) {
@@ -365,12 +372,12 @@ void camera_refresh(void) {
 
         vec2 left = left_point_on_canvas.get_position();
         vec2 right = right_point_on_canvas.get_position();
+        vec2 red = red_point_on_canvas.get_position();
         vec2 ball = ball_point_on_canvas.get_position(0);
         //LCD_DrawLine(laser.x,0,laser.x,320);
         //LCD_DrawLine(0,320 - laser.y,240,320 - laser.y);
         POINT_COLOR = RED;
         if (left.x > 0 && left.y > 0 && right.x > 0 && right.y > 0 && ball.x > 0 && ball.y > 0) {
-            show_image_process = false;
             vec2 vec_left_right = right - left;
             vec2 vec_left_ball = ball - left;
             float pixel_left_right = length(vec_left_right);
@@ -380,9 +387,13 @@ void camera_refresh(void) {
             float y_right_bottom = (right.y - 120.f) * length_per_pixel;
             float x_ball_left = pixel_ball_left * length_per_pixel - 10.f;
 
-            int tick_count = xTaskGetTickCount();
-
-            printf("data %d %.3f %.3f %.3f\r\n", tick_count, y_left_bottom, y_right_bottom, x_ball_left);
+            if (red.x > 0 && red.y > 0) {
+                vec2 vec_left_red = red - left;
+                float pixel_red_left = dot(vec_left_right, vec_left_red) / pixel_left_right;
+                float x_red_left = pixel_red_left * length_per_pixel - 10.f;
+                printf("red %.3f\r\n", x_red_left);
+            }
+            printf("ball %.3f\r\n", x_ball_left);
 
             if (show_image_process) {
                 POINT_COLOR = BRED;
@@ -398,6 +409,7 @@ void camera_refresh(void) {
                 );
                 LCD_ShowString(0, 240 + 16, 800, 16, 16, (u8 *) ch1);
             }
+            show_image_process = false;
         } else {
             show_image_process = true;
         }
