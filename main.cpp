@@ -100,7 +100,7 @@ extern "C" void main_task(const void*) {
             static float last_ms = 0,last_ball_position = 0,last_v = 0;
             float ms, y_left,y_right,ball_position;
             scanf("%f%f%f%f",&ms, &y_left,&y_right,&ball_position);
-            //printf("get data:%f %f %f %f\r\n", ms, y_left,y_right,ball_position);
+            printf("get data:%f %f %f %f\r\n", ms, y_left,y_right,ball_position);
             if(last_ms != 0 && ms != last_ms){
                 float s = (ms - last_ms) / 1000.f;
                 float v = (ball_position - last_ball_position) / s;
