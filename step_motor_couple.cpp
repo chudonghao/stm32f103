@@ -115,27 +115,27 @@ namespace cdh {
         }
         if (steps_dir.x != 0 || steps_dir.y != 0)
             if (steps_dir.x == 0) {
-                __HAL_TIM_SET_AUTORELOAD(&htim3, 2000 - 1);
+                __HAL_TIM_SET_AUTORELOAD(&htim3, 1000 - 1);
             } else if (steps_dir.y == 0) {
-                __HAL_TIM_SET_AUTORELOAD(&htim2, 2000 - 1);
+                __HAL_TIM_SET_AUTORELOAD(&htim2, 1000 - 1);
             } else {
                 if (steps_dir.x >= steps_dir.y) {
                     float k = steps_dir.x / steps_dir.y;
-                    if (k > (float) 65536 / 2000) {
-                        __HAL_TIM_SET_AUTORELOAD(&htim2, 2000 - 1);
+                    if (k > (float) 65536 / 1000) {
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 1000 - 1);
                         __HAL_TIM_SET_AUTORELOAD(&htim3, 65536 - 1);
                     } else {
-                        __HAL_TIM_SET_AUTORELOAD(&htim2, 2000 - 1);
-                        __HAL_TIM_SET_AUTORELOAD(&htim3, 2000 * k - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 1000 - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 1000 * k - 1);
                     }
                 } else {
                     float k = steps_dir.y / steps_dir.x;
-                    if (k > (float) 65536 / 2000) {
-                        __HAL_TIM_SET_AUTORELOAD(&htim3, 2000 - 1);
+                    if (k > (float) 65536 / 1000) {
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 1000 - 1);
                         __HAL_TIM_SET_AUTORELOAD(&htim2, 65536 - 1);
                     } else {
-                        __HAL_TIM_SET_AUTORELOAD(&htim3, 2000 - 1);
-                        __HAL_TIM_SET_AUTORELOAD(&htim2, 2000 * k - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim3, 1000 - 1);
+                        __HAL_TIM_SET_AUTORELOAD(&htim2, 1000 * k - 1);
                     }
                 }
             }
