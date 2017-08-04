@@ -166,7 +166,10 @@ namespace {
         return color_type_common_e;
     }
 
+    bool lose_valid_frame = true;
     bool show_image_process = false;
+    bool need_clear_error_frame = false;
+    float x_ball_zero_sampling = 0.f;
 }
 
 
@@ -412,13 +415,18 @@ void camera_refresh(void) {
                 );
                 LCD_ShowString(0, 240 + 16, 800, 16, 16, (u8 *) ch1);
             }
+            lose_valid_frame = false;
             show_image_process = false;
         } else {
+            lose_valid_frame = true;
             show_image_process = true;
         }
         if (show_image_process) {
             LCD_DrawLine(0, 120, 319, 120);
             LCD_DrawLine(0, 60, 319, 60);
+            if(lose_valid_frame == false){
+                need_clear_error_frame = true;
+            }
         }
     }
 }
@@ -428,7 +436,19 @@ void main_task(void *) {
         camera_refresh();//¸üÐÂÏÔÊ¾
     }
 }
-
+void lcd_task(void*){
+    for(;;){
+        static float old_x_ball_position_sampling = 0.f;
+        if(lose_valid_frame == false && old_x_ball_position_sampling != x_ball_zero_sampling){
+            show_ball_position(x_ball_zero_sampling);
+        }else if (need_clear_error_frame == true){
+            screen_base_init();
+            need_clear_error_frame = false;
+        }else{
+            taskYIELD();
+        }
+    }
+}
 void control_task(void *) {
     for (;;) {
         static char ch[128];
@@ -486,6 +506,6 @@ int main(void) {
 
     xTaskCreate(main_task, 0, 200, 0, 1, 0);
     xTaskCreate(control_task, 0, 200, 0, 1, 0);
-
+    xTaskCreate(lcd_task,0,200,0,1,0);
     vTaskStartScheduler();
 }
