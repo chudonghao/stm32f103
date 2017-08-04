@@ -15,6 +15,8 @@ extern "C" {
 #include "ov7670.h"
 #include "timer.h"
 #include "exti.h"
+#include "led.h"
+#include "beep.h"
 }
 
 #include "usart1.h"
@@ -429,6 +431,10 @@ void main_task(void *) {
 void control_task(void *) {
     for (;;) {
         static char ch[128];
+        usart1_t::trim_buffer_head();
+        while (!usart1_t::have_data_to_read()) {
+            taskYIELD();
+        }
         scanf("%s", ch);
         if (strcmp(ch, "st") == 0) {
             int count = scanf("%d%d%d", &red_threshold, &green_threshold, &blue_threshold);
@@ -439,6 +445,14 @@ void control_task(void *) {
             }
         } else if (strcmp(ch, "sip") == 0) {
             show_image_process = !show_image_process;
+        } else if (strcmp(ch, "hint") == 0) {
+            BEEP = 1;
+            for (int i = 0; i < 30; ++i) {
+                LED0 = !LED0;
+                vTaskDelay(100);
+            }
+            LED0 = 0;
+            BEEP = 0;
         } else {
             printf("unknow func\r\n");
         }
@@ -450,6 +464,8 @@ int main(void) {
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); //设置中断优先级分组为组2：2位抢占优先级，2位响应优先级
     delay_init();                                   //延时函数初始化
     lcd_init();
+    LED_Init();
+    BEEP_Init();
     usart1_t::init();
     printf("reset.\r\n");
     POINT_COLOR = RED;                                //设置字体为红色
@@ -468,7 +484,7 @@ int main(void) {
     LCD_Clear(BLACK);
 
     xTaskCreate(main_task, 0, 200, 0, 1, 0);
-    //xTaskCreate(control_task, 0, 200, 0, 1, 0);
+    xTaskCreate(control_task, 0, 200, 0, 1, 0);
 
     vTaskStartScheduler();
 }
