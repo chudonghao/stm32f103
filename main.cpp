@@ -352,29 +352,6 @@ void camera_refresh(void) {
         }
 
         ov_sta = 0;                    //等待下一个帧中断
-//        //rgb???? ????
-//        for (int x = 0; x < camera_w; ++x) {
-//            for (int y = 0; y < camera_h; ++y) {
-//                if (y < 30 || y >= 290) {
-//                    continue;
-//                }
-//                color = LCD_ReadPoint(x, y);
-//                switch (color_type_rgb(color)) {
-//                    case color_type_red_e:
-//                        POINT_COLOR = RED;
-//                        break;
-//                    case color_type_black_e:
-//                        POINT_COLOR = BLACK;
-//                        break;
-//                    case color_type_green_e:
-//                        POINT_COLOR = GREEN;
-//                    default:
-//                        POINT_COLOR = GRAY;
-//                }
-//                LCD_DrawPoint(x + 240, y);
-//            }
-//        }
-        //获得点位坐标
 
         vec2 left = left_point_on_canvas.get_position();
         vec2 right = right_point_on_canvas.get_position();
@@ -383,14 +360,21 @@ void camera_refresh(void) {
         //LCD_DrawLine(laser.x,0,laser.x,320);
         //LCD_DrawLine(0,320 - laser.y,240,320 - laser.y);
         POINT_COLOR = RED;
+        static vec2 vec_left_right;
+        static vec2 vec_left_ball;
+        static float pixel_left_right;
+        static float pixel_ball_left;
+        static float length_per_pixel;
+        static float y_left_bottom;
+        static float y_right_bottom;
         if (left.x > 0 && left.y > 0 && right.x > 0 && right.y > 0 && ball.x > 0 && ball.y > 0) {
-            vec2 vec_left_right = right - left;
-            vec2 vec_left_ball = ball - left;
-            float pixel_left_right = length(vec_left_right);
-            float pixel_ball_left = dot(vec_left_right, vec_left_ball) / pixel_left_right;
-            float length_per_pixel = 570.f / pixel_left_right;
-            float y_left_bottom = (left.y - 120.f) * length_per_pixel;
-            float y_right_bottom = (right.y - 120.f) * length_per_pixel;
+            vec_left_right = right - left;
+            vec_left_ball = ball - left;
+            pixel_left_right = length(vec_left_right);
+            pixel_ball_left = dot(vec_left_right, vec_left_ball) / pixel_left_right;
+            length_per_pixel = 570.f / pixel_left_right;
+            y_left_bottom = (left.y - 120.f) * length_per_pixel;
+            y_right_bottom = (right.y - 120.f) * length_per_pixel;
             x_ball_zero_sampling = pixel_ball_left * length_per_pixel - 10.f;
 
             if (red.x > 0 && red.y > 0) {
@@ -401,32 +385,26 @@ void camera_refresh(void) {
             }
             printf("ball %.3f\r\n", x_ball_zero_sampling);
 
-            if (show_image_process) {
-                POINT_COLOR = BRED;
-                static char ch1[128];
-                sprintf(ch1, "left=(%.3f,%.3f) right=(%.3f,%.3f) ball=(%.3f,%.3f)",
-                        left_point_on_canvas.get_position().x, left_point_on_canvas.get_position().y,
-                        right_point_on_canvas.get_position().x, right_point_on_canvas.get_position().y,
-                        ball_point_on_canvas.get_position().x, ball_point_on_canvas.get_position().y
-                );
-                LCD_ShowString(0, 240, 800, 16, 16, (u8 *) ch1);
-                sprintf(ch1, "plr=%f,pbl=%f,ylb=%f,yrb=%f,ybl=%f",
-                        pixel_left_right, pixel_ball_left, y_left_bottom, y_right_bottom, x_ball_zero_sampling
-                );
-                LCD_ShowString(0, 240 + 16, 800, 16, 16, (u8 *) ch1);
-							  LCD_DrawLine(0, 120, 319, 120);
-								LCD_DrawLine(0, 60, 319, 60);
+
+            if(lose_valid_frame == true){
+                lose_valid_frame = false;
+                need_clear_error_frame = true;
             }
-						if(lose_valid_frame == true){
-								lose_valid_frame = false;
-								need_clear_error_frame = true;
-						}
             show_image_process = false;
         } else {
             lose_valid_frame = true;
             show_image_process = true;
         }
-
+        if (show_image_process) {
+            POINT_COLOR = BRED;
+            static char ch1[128];
+            sprintf(ch1, "left=(%.3f,%.3f) right=(%.3f,%.3f) ball=(%.3f,%.3f)",
+                    left_point_on_canvas.get_position().x, left_point_on_canvas.get_position().y,
+                    right_point_on_canvas.get_position().x, right_point_on_canvas.get_position().y,
+                    ball_point_on_canvas.get_position().x, ball_point_on_canvas.get_position().y
+            );
+            LCD_ShowString(0, 240, 800, 16, 16, (u8 *) ch1);
+        }
     }
 }
 
@@ -438,13 +416,13 @@ void main_task(void *) {
 void lcd_task(void*){
     for(;;){
         static float old_x_ball_position_sampling = 0.f;
-				if (need_clear_error_frame == true){
+        if (need_clear_error_frame == true){
             screen_base_init();
             need_clear_error_frame = false;
         }
         if(lose_valid_frame == false && old_x_ball_position_sampling != x_ball_zero_sampling){
             show_ball_position(x_ball_zero_sampling);
-						old_x_ball_position_sampling=x_ball_zero_sampling;
+            old_x_ball_position_sampling=x_ball_zero_sampling;
         }else{
             taskYIELD();
         }
