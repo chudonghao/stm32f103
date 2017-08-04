@@ -4,7 +4,7 @@
 #include "stdlib.h"
 
 
-#define M_position 150
+#define M_position 100
 #define N_position 650
 #define POLE_height 400
 

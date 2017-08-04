@@ -83,6 +83,8 @@ namespace {
     void lcd_init() {
         LCD_Init();                                     //初始化LCD
         LCD_Display_Dir(1);
+				//视觉正方向
+        LCD_Scan_Dir(R2L_D2U);
     }
 
     bool camera_init() {
@@ -168,7 +170,7 @@ namespace {
 
     bool lose_valid_frame = true;
     bool show_image_process = false;
-    bool need_clear_error_frame = false;
+    bool need_clear_error_frame = true;
     float x_ball_zero_sampling = 0.f;
 }
 
@@ -182,7 +184,7 @@ void camera_refresh(void) {
     if (ov_sta)//有帧中断更新？
     {
         //写扫描方向
-        LCD_Scan_Dir(L2R_D2U);
+       // LCD_Scan_Dir(L2R_D2U);
         LCD_Set_Window(SSD_HOR_RESOLUTION - camera_h, 0, camera_h, camera_w);
 //        if (lcddev.id == 0X1963)
 //            LCD_Set_Window((lcddev.width - camera_w) / 2, (lcddev.height - camera_h) / 2, camera_w, camera_h);//将显示区域设置到屏幕中央
@@ -372,8 +374,6 @@ void camera_refresh(void) {
 //                LCD_DrawPoint(x + 240, y);
 //            }
 //        }
-        //视觉正方向
-        LCD_Scan_Dir(R2L_D2U);
         //获得点位坐标
 
         vec2 left = left_point_on_canvas.get_position();
@@ -391,7 +391,7 @@ void camera_refresh(void) {
             float length_per_pixel = 570.f / pixel_left_right;
             float y_left_bottom = (left.y - 120.f) * length_per_pixel;
             float y_right_bottom = (right.y - 120.f) * length_per_pixel;
-            float x_ball_zero = pixel_ball_left * length_per_pixel - 10.f;
+            x_ball_zero_sampling = pixel_ball_left * length_per_pixel - 10.f;
 
             if (red.x > 0 && red.y > 0) {
                 vec2 vec_left_red = red - left;
@@ -399,7 +399,7 @@ void camera_refresh(void) {
                 float x_red_left = pixel_red_left * length_per_pixel - 10.f;
                 printf("red %.3f\r\n", x_red_left);
             }
-            printf("ball %.3f\r\n", x_ball_zero);
+            printf("ball %.3f\r\n", x_ball_zero_sampling);
 
             if (show_image_process) {
                 POINT_COLOR = BRED;
@@ -411,23 +411,22 @@ void camera_refresh(void) {
                 );
                 LCD_ShowString(0, 240, 800, 16, 16, (u8 *) ch1);
                 sprintf(ch1, "plr=%f,pbl=%f,ylb=%f,yrb=%f,ybl=%f",
-                        pixel_left_right, pixel_ball_left, y_left_bottom, y_right_bottom, x_ball_zero
+                        pixel_left_right, pixel_ball_left, y_left_bottom, y_right_bottom, x_ball_zero_sampling
                 );
                 LCD_ShowString(0, 240 + 16, 800, 16, 16, (u8 *) ch1);
+							  LCD_DrawLine(0, 120, 319, 120);
+								LCD_DrawLine(0, 60, 319, 60);
             }
-            lose_valid_frame = false;
+						if(lose_valid_frame == true){
+								lose_valid_frame = false;
+								need_clear_error_frame = true;
+						}
             show_image_process = false;
         } else {
             lose_valid_frame = true;
             show_image_process = true;
         }
-        if (show_image_process) {
-            LCD_DrawLine(0, 120, 319, 120);
-            LCD_DrawLine(0, 60, 319, 60);
-            if(lose_valid_frame == false){
-                need_clear_error_frame = true;
-            }
-        }
+
     }
 }
 
@@ -439,11 +438,13 @@ void main_task(void *) {
 void lcd_task(void*){
     for(;;){
         static float old_x_ball_position_sampling = 0.f;
-        if(lose_valid_frame == false && old_x_ball_position_sampling != x_ball_zero_sampling){
-            show_ball_position(x_ball_zero_sampling);
-        }else if (need_clear_error_frame == true){
+				if (need_clear_error_frame == true){
             screen_base_init();
             need_clear_error_frame = false;
+        }
+        if(lose_valid_frame == false && old_x_ball_position_sampling != x_ball_zero_sampling){
+            show_ball_position(x_ball_zero_sampling);
+						old_x_ball_position_sampling=x_ball_zero_sampling;
         }else{
             taskYIELD();
         }
