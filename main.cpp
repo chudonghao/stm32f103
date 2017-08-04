@@ -263,6 +263,9 @@ void camera_refresh(void) {
                             }
                             break;
                         case color_type_black_e:
+                            if (x >= 30 && x < 290) {
+                                ball_point_on_canvas.record(ivec2(x + 1, y));
+                            }
                             break;
                         case color_type_green_e:
                             break;
@@ -274,9 +277,6 @@ void camera_refresh(void) {
                             }
                             break;
                         case color_type_bright_e:
-                            if (x >= 15 && x < 305) {
-                                ball_point_on_canvas.record(ivec2(x + 1, y));
-                            }
                             break;
                     }
                     switch (color_type_yuv(y1, u, v)) {
@@ -286,6 +286,9 @@ void camera_refresh(void) {
                             }
                             break;
                         case color_type_black_e:
+                            if (x >= 30 && x < 290) {
+                                ball_point_on_canvas.record(ivec2(x, y));
+                            }
                             break;
                         case color_type_green_e:
                             break;
@@ -297,9 +300,6 @@ void camera_refresh(void) {
                             }
                             break;
                         case color_type_bright_e:
-                            if (x >= 15 && x < 305) {
-                                ball_point_on_canvas.record(ivec2(x, y));
-                            }
                             break;
                     }
                     if (show_image_process) {
