@@ -342,7 +342,7 @@ void camera_refresh(void) {
                                 LCD->LCD_RAM = GRAY;
                         }
                     }
-                } else {
+                } else/**/{
                     if (show_image_process) {
                         LCD->LCD_RAM = (y0 << 8) | u;
                         LCD->LCD_RAM = (y1 << 8) | v;
@@ -365,16 +365,16 @@ void camera_refresh(void) {
         static float pixel_left_right;
         static float pixel_ball_left;
         static float length_per_pixel;
-        static float y_left_bottom;
-        static float y_right_bottom;
+        //static float y_left_bottom;
+        //static float y_right_bottom;
         if (left.x > 0 && left.y > 0 && right.x > 0 && right.y > 0 && ball.x > 0 && ball.y > 0) {
             vec_left_right = right - left;
             vec_left_ball = ball - left;
             pixel_left_right = length(vec_left_right);
             pixel_ball_left = dot(vec_left_right, vec_left_ball) / pixel_left_right;
             length_per_pixel = 570.f / pixel_left_right;
-            y_left_bottom = (left.y - 120.f) * length_per_pixel;
-            y_right_bottom = (right.y - 120.f) * length_per_pixel;
+            //y_left_bottom = (left.y - 120.f) * length_per_pixel;
+            //y_right_bottom = (right.y - 120.f) * length_per_pixel;
             x_ball_zero_sampling = pixel_ball_left * length_per_pixel - 10.f;
 
             if (red.x > 0 && red.y > 0) {
