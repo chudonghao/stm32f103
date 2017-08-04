@@ -17,6 +17,7 @@ extern "C" {
 #include "exti.h"
 #include "led.h"
 #include "beep.h"
+#include "my_lcd.h"
 }
 
 #include "usart1.h"
@@ -387,7 +388,7 @@ void camera_refresh(void) {
             float length_per_pixel = 570.f / pixel_left_right;
             float y_left_bottom = (left.y - 120.f) * length_per_pixel;
             float y_right_bottom = (right.y - 120.f) * length_per_pixel;
-            float x_ball_left = pixel_ball_left * length_per_pixel - 10.f;
+            float x_ball_zero = pixel_ball_left * length_per_pixel - 10.f;
 
             if (red.x > 0 && red.y > 0) {
                 vec2 vec_left_red = red - left;
@@ -395,7 +396,7 @@ void camera_refresh(void) {
                 float x_red_left = pixel_red_left * length_per_pixel - 10.f;
                 printf("red %.3f\r\n", x_red_left);
             }
-            printf("ball %.3f\r\n", x_ball_left);
+            printf("ball %.3f\r\n", x_ball_zero);
 
             if (show_image_process) {
                 POINT_COLOR = BRED;
@@ -407,7 +408,7 @@ void camera_refresh(void) {
                 );
                 LCD_ShowString(0, 240, 800, 16, 16, (u8 *) ch1);
                 sprintf(ch1, "plr=%f,pbl=%f,ylb=%f,yrb=%f,ybl=%f",
-                        pixel_left_right, pixel_ball_left, y_left_bottom, y_right_bottom, x_ball_left
+                        pixel_left_right, pixel_ball_left, y_left_bottom, y_right_bottom, x_ball_zero
                 );
                 LCD_ShowString(0, 240 + 16, 800, 16, 16, (u8 *) ch1);
             }
