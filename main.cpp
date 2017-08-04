@@ -263,15 +263,15 @@ void camera_refresh(void) {
                             }
                             break;
                         case color_type_black_e:
+                            break;
+                        case color_type_green_e:
+                            break;
+                        case color_type_blue_e:
                             if (x < 30) {
                                 left_point_on_canvas.record(ivec2(x + 1, y));
                             } else if (x >= 290) {
                                 right_point_on_canvas.record(ivec2(x + 1, y));
                             }
-                            break;
-                        case color_type_green_e:
-                            break;
-                        case color_type_blue_e:
                             break;
                         case color_type_bright_e:
                             if (x >= 15 && x < 305) {
@@ -286,15 +286,15 @@ void camera_refresh(void) {
                             }
                             break;
                         case color_type_black_e:
+                            break;
+                        case color_type_green_e:
+                            break;
+                        case color_type_blue_e:
                             if (x < 30) {
                                 left_point_on_canvas.record(ivec2(x, y));
                             } else if (x >= 290) {
                                 right_point_on_canvas.record(ivec2(x, y));
                             }
-                            break;
-                        case color_type_green_e:
-                            break;
-                        case color_type_blue_e:
                             break;
                         case color_type_bright_e:
                             if (x >= 15 && x < 305) {
