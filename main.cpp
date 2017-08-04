@@ -77,28 +77,39 @@ static inline void test() {
 }
 
 static inline float pid_input(float except_position) {
-    float diff_position = except_position - ball.position();
+    float diff_p = except_position - ball.position();
     float diff_v;
     float aim_v;
     float aim_a;
-    if (diff_position >= 70.f) {
+    float pid_input;
+    if (diff_p >= 70.f) {
         aim_v = 70.f;
-    } else if (diff_position < -70.f) {
+    } else if (diff_p < -70.f) {
         aim_v = -70.f;
-    } else if (diff_position >= -15 && diff_position < 15) {
+    } else if (diff_p >= -15.f && diff_p < 15.f) {
         aim_v = 0.f;
+    } else if (diff_p < 0) {
+        aim_v = diff_p;
     } else {
-        aim_v = sqrt(diff_position  / 70.f) * 70.f;
+        aim_v = diff_p;
     }
     diff_v = aim_v - ball.v();
-    if(diff_v >= 70.f){
+    if (diff_v >= 70.f) {
         aim_a = 100.f;
-    }else if(diff_v < - 70.f){
+    } else if (diff_v < -70.f) {
         aim_a = -100.f;
-    }else{
+    } else {
         aim_a = diff_v * (100.f / 70.f);
     }
-    return aim_a - ball.a();
+    pid_input = aim_a - ball.a();
+    if (diff_p < 25.f && diff_p >= -25.f) {
+        pid_input *= 0.2;
+    } else if (pid_input >= 50.f) {
+        pid_input = 50.f;
+    } else if (pid_input < -50.f) {
+        pid_input = -50.f;
+    }
+    return pid_input;
 }
 
 extern "C" void pid_task(const void *) {
@@ -126,7 +137,7 @@ extern "C" void pid_task(const void *) {
         ball.position(new_ball_p);
         ball.v(new_ball_v);
         ball.a(new_ball_a);
-        printf("%f,%f,%f;\r\n", ball.position(), ball.v(), ball.a());
+//        printf("%f,%f,%f;\r\n", ball.position(), ball.v(), ball.a());
 //            static int last_ms ;
 //            static float last_v;
 //            int ms = xTaskGetTickCount();
@@ -145,17 +156,21 @@ extern "C" void pid_task(const void *) {
 //
 //            }
 
-        float aim_angle = - arm_pid_f32(&arm_pid_instance, pid_input(aim_position));
+        float aim_angle = -arm_pid_f32(&arm_pid_instance, pid_input(aim_position));
         //printf("aim_v=%f,ball.p=%f,aim_angle=%f\r\n",aim_v,ball.position(),aim_angle);
 
         if (start) {
-            if (ball.position() - aim_position >= -15 && ball.position()- aim_position <= 15 
-                && ball.v() < 40.f && ball.v() >= -40.f) {
+            if (ball.position() - aim_position >= -15 && ball.position() - aim_position <= 15
+                && ball.v() < 20.f && ball.v() >= -20.f) {
                 track.dip_angle(0.f);
+                
+                start = false;
+                printf("hint\r\n");
             } else {
                 track.dip_angle(aim_angle);
             }
-            track.motor_dip_angle();
+            track.height_base(ball.position() + 10.f);
+            track.motor();
         }
         osDelay(30);
     }
@@ -165,21 +180,25 @@ extern "C" void main_task(const void *) {
     for (;;) {
         static char ch[128];
         scanf("%s", ch);
-        if (strcmp(ch, "data") == 0) {
-            float ms, y_left, y_right, ball_position;
-            scanf("%f%f%f%f", &ms, &y_left, &y_right, &ball_position);
+        if (strcmp(ch, "ball") == 0) {
+            float ball_position;
+            scanf("%f", &ball_position);
             //printf("get data:%f %f %f %f\r\n", ms, y_left,y_right,ball_position);
             ball_position_sampling = ball_position;
+        } else if (strcmp(ch, "red") == 0) {
+            float red_point_position;
+            scanf("%f", &red_point_position);
+            aim_position = red_point_position;
         } else if (strcmp(ch, "test") == 0) {
             float dip_angle, height;
             scanf("%f%f", &dip_angle, &height);
             printf("test:%f %f\r\n", dip_angle, height);
             track.dip_angle(dip_angle);
             track.height(height);
-            while (track.motor_height() == -1) {
+            while (track.motor() == -1) {
                 step_motor_couple_t::step();
             }
-            while (track.motor_dip_angle() == -1) {
+            while (track.motor() == -1) {
                 step_motor_couple_t::step();
             }
         } else if (strcmp(ch, "test2") == 0) {
@@ -188,7 +207,7 @@ extern "C" void main_task(const void *) {
             printf("test2:%f\r\n", height_base);
             track.height_base(height_base);
         } else {
-            printf("unknown func:%s\r\n", ch);
+            //printf("unknown func:%s\r\n", ch);
         }
     }
 }

@@ -37,6 +37,9 @@ namespace cdh {
         track_t() : dip_angle_(), height_(), height_base_() {}
 
         void set_base(){
+            dip_angle_ = 0.f;
+            height_ = 0.f;
+            height_base_ = 0.f;
             step_motor_couple_t::set_current_steps(ivec2(0, 0));
         }
 
@@ -50,7 +53,7 @@ namespace cdh {
 
         void height(float height_) { this->height_ = height_; }
 
-        int motor_dip_angle() {
+        int motor() {
             int res;
             vec2 length;
             float tan_dip_angle = tan(dip_angle_);
@@ -61,10 +64,6 @@ namespace cdh {
             res = step_motor_couple_t::set_next_steps(steps,true);
             step_motor_couple_t::step();
             return res;
-        }
-
-        int motor_height() {
-            return motor_dip_angle();
         }
     };
 
