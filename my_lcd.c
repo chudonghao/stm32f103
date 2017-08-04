@@ -131,6 +131,7 @@ void Show_Str(u16 x,u16 y,u16 width,u16 height,u8*str,u8 size,u8 mode)
 
 void screen_base_init(void)
 {
+	LCD_Fill(0,0,lcddev.width,lcddev.height,WHITE);
 	LCD_Fill(M_position,POLE_height,N_position,POLE_height+4,BLACK);
 	Show_Str(150,100,72,16,"position:",16,0);
 }
@@ -138,9 +139,9 @@ void screen_base_init(void)
 void show_ball_position(float x_position)
 {
 	float x=M_position+x_position;
-	float y=POLE_height-15;
+	float y=POLE_height-16;
 	LCD_Fill(225,100,225+8*3,100+16,WHITE);
-	POINT_COLOR=RED;
+	POINT_COLOR=GRAY;
 	LCD_DrawFullCircle(x,y,16);
 	LCD_ShowIntNum(225,100,(int)x_position,3,16);
 	POINT_COLOR=WHITE;
