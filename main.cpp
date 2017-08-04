@@ -22,8 +22,8 @@ namespace {
     track_t track;
     ball_t ball;
     float ball_position_sampling;
-    bool start = false;
     float aim_position = 425.f;
+    float aim_position_threshold = 20.f;
     arm_pid_instance_f32 arm_pid_instance;
     arm_fir_instance_f32 arm_fir_instance1;
     float arm_fir_state1[TAP_SIZE + BLOCK_SIZE - 1];
@@ -31,6 +31,17 @@ namespace {
     float arm_fir_state2[TAP_SIZE + BLOCK_SIZE - 1];
 //    arm_fir_instance_f32 arm_fir_instance3;
 //    float arm_fir_state3[TAP_SIZE+BLOCK_SIZE-1];
+    enum ball_func_e {
+        ball_func_ma_cd_ab_dn_e = 1,
+        ball_func_follow_red_e,
+        ball_func_follow_red_2_e,
+        ball_func_up_down_e,
+        ball_func_ab_cd_e,
+        ball_func_cd_ab_e,
+    };
+    ball_func_e ball_func;
+    bool is_running = false;
+    bool ball_func_ab_cd_ab = false;
 }
 extern "C" void key_board_task(const void *) {
     static int old_key = -1;
@@ -48,9 +59,10 @@ extern "C" void key_board_task(const void *) {
             delay_count = 0;
         }
         if (key == 0) {
+            ball_func_ab_cd_ab = false;
+            is_running = false;
             arm_pid_reset_f32(&arm_pid_instance);
             track.set_base();
-            start = !start;
         } else if (key == 2) {
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.y += 1;
@@ -67,55 +79,122 @@ extern "C" void key_board_task(const void *) {
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.y -= 1;
             step_motor_couple_t::set_next_steps(cur);
+        } else if (key == 8) {
+            ball_func = ball_func_ma_cd_ab_dn_e;
+            is_running = true;
+            aim_position = 50.f;
+        } else if (key == 9) {
+            ball_func = ball_func_follow_red_e;
+            is_running = true;
+        } else if (key == 10) {
+            ball_func = ball_func_follow_red_2_e;
+            is_running = true;
+        } else if (key == 12) {
+            ball_func = ball_func_up_down_e;
+            is_running = true;
+            aim_position = 275.f;
+        } else if (key == 13) {
+            ball_func = ball_func_ab_cd_e;
+            is_running = true;
+            aim_position = 425.f;
+        } else if (key == 14) {
+            ball_func = ball_func_cd_ab_e;
+            is_running = true;
+            aim_position = 125.f;
+        } else if (key == 15) {
+            ball_func = ball_func_ab_cd_e;
+            is_running = true;
+            ball_func_ab_cd_ab = true;
         }
         osDelay(10);
     }
 }
 
-static inline void test() {
+static inline float compute_aim_v(float diff_p) {
+    int sign_diff_p;
+    float abs_diff_p;
+    float res = 0.f;
+    if (diff_p < 0) {
+        abs_diff_p = -diff_p;
+        sign_diff_p = -1;
+    } else {
+        abs_diff_p = diff_p;
+        sign_diff_p = 1;
+    }
 
+    if (abs_diff_p < aim_position_threshold) {
+        return 0.f;
+    }
+
+//    if(abs_diff_p < 10.f){
+//        return 0.f;
+//    }
+//    if(abs_diff_p < 40.f) {
+//        res = 30.f +(abs_diff_p - 10.f) * 2.f;
+//        return res * sign_diff_p;
+//    }
+//
+//    if(abs_diff_p < 70.f){
+//        res = 90.f + (abs_diff_p - 40.f) * 1.5f;
+//        return res * sign_diff_p;
+//    }
+//    res = 135.f + (abs_diff_p - 70.f) * 1.f;
+    return (abs_diff_p + 40.f) * 0.8f * sign_diff_p;
 }
 
 static inline float pid_input(float except_position) {
     float diff_p = except_position - ball.position();
     float diff_v;
-    float aim_v;
     float aim_a;
     float pid_input;
-    if (diff_p >= 70.f) {
-        aim_v = 70.f;
-    } else if (diff_p < -70.f) {
-        aim_v = -70.f;
-    } else if (diff_p >= -15.f && diff_p < 15.f) {
-        aim_v = 0.f;
-    } else if (diff_p < 0) {
-        aim_v = diff_p;
-    } else {
-        aim_v = diff_p;
-    }
-    diff_v = aim_v - ball.v();
+    diff_v = compute_aim_v(diff_p) - ball.v();
     if (diff_v >= 70.f) {
-        aim_a = 100.f;
+        aim_a = 240.f;
     } else if (diff_v < -70.f) {
-        aim_a = -100.f;
+        aim_a = -240.f;
     } else {
-        aim_a = diff_v * (100.f / 70.f);
+        aim_a = (diff_v) * 240.f / 70.f;
     }
     pid_input = aim_a - ball.a();
-    if (diff_p < 25.f && diff_p >= -25.f) {
-        pid_input *= 0.2;
-    } else if (pid_input >= 50.f) {
-        pid_input = 50.f;
-    } else if (pid_input < -50.f) {
-        pid_input = -50.f;
+    static float  fix_aim_a =0.f;
+    if (ball.v() < 30.f && ball.v() >= -30.f) {
+        if (ball.position() - aim_position < -aim_position_threshold ||
+            ball.position() - aim_position > aim_position_threshold) {
+                if(diff_p > 0.f){
+                    pid_input += 200.f;
+                }else{
+                    pid_input -= 200.f;
+                }
+//                fix_aim_a += 40.f;
+        }
+//            else{
+//            fix_aim_a = 0.f;
+//        }
     }
+//    else{
+//        if(fix_aim_a >=40.f)
+//            fix_aim_a -= 40.f;
+//    }
+    
+//    if(diff_p < 0.f){
+//        pid_input = - fix_aim_a + (aim_a - ball.a());
+//    }else{
+//        pid_input = fix_aim_a + (aim_a -ball.a());
+//    }
+//    if (diff_p < 25.f && diff_p >= -25.f) {
+//        pid_input *= 1.0f;
+//    } else if (pid_input >= 50.f) {
+//        pid_input = 50.f;
+//    } else if (pid_input < -50.f) {
+//        pid_input = -50.f;
+//    }
     return pid_input;
 }
 
 extern "C" void pid_task(const void *) {
-    arm_pid_instance.Kp = 0.03f / 100.f;
-    arm_pid_instance.Ki = 0.00001f;
-    arm_pid_instance.Kd = 0.00006f;
+    arm_pid_instance.Kp = 1.f / 9800.f;
+    arm_pid_instance.Ki = arm_pid_instance.Kp * 0.15f;
+    arm_pid_instance.Kd = arm_pid_instance.Kp * 0.1f;
     arm_pid_init_f32(&arm_pid_instance, 1);
     arm_fir_init_f32(&arm_fir_instance1, TAP_SIZE, TAP, arm_fir_state1, BLOCK_SIZE);
     arm_fir_init_f32(&arm_fir_instance2, TAP_SIZE, TAP, arm_fir_state2, BLOCK_SIZE);
@@ -126,10 +205,12 @@ extern "C" void pid_task(const void *) {
         float new_ball_v = 0.f;
         float ball_a_sampling = 0.f;
         float new_ball_a = 0.f;
+
         arm_fir_f32(&arm_fir_instance1, &ball_position_sampling, &new_ball_p, 1);
         if (last_ms != ms) {
             new_ball_v = (new_ball_p - ball.position()) * 1000.f / (ms - last_ms);
             ball_a_sampling = (new_ball_v - ball.v()) * 1000.f / (ms - last_ms);
+            ball_a_sampling = -track.dip_angle() * 9800.f;
         }
         arm_fir_f32(&arm_fir_instance2, &ball_a_sampling, &new_ball_a, 1);
 
@@ -137,7 +218,7 @@ extern "C" void pid_task(const void *) {
         ball.position(new_ball_p);
         ball.v(new_ball_v);
         ball.a(new_ball_a);
-//        printf("%f,%f,%f;\r\n", ball.position(), ball.v(), ball.a());
+//        printf("%f,%f,%f,%f;\r\n", ball.position(), ball.v(), ball.a(),track.dip_angle());
 //            static int last_ms ;
 //            static float last_v;
 //            int ms = xTaskGetTickCount();
@@ -156,22 +237,122 @@ extern "C" void pid_task(const void *) {
 //
 //            }
 
-        float aim_angle = -arm_pid_f32(&arm_pid_instance, pid_input(aim_position));
-        //printf("aim_v=%f,ball.p=%f,aim_angle=%f\r\n",aim_v,ball.position(),aim_angle);
 
-        if (start) {
-            if (ball.position() - aim_position >= -15 && ball.position() - aim_position <= 15
-                && ball.v() < 20.f && ball.v() >= -20.f) {
-                track.dip_angle(0.f);
-                
-                start = false;
-                printf("hint\r\n");
-            } else {
-                track.dip_angle(aim_angle);
+        if (is_running) {
+            float aim_angle = -arm_pid_f32(&arm_pid_instance, pid_input(aim_position));
+            //printf("aim_v=%f,ball.p=%f,aim_angle=%f\r\n",aim_v,ball.position(),aim_angle);
+            switch (ball_func) {
+                case ball_func_ma_cd_ab_dn_e:
+                    if (ball.position() - aim_position >= -aim_position_threshold &&
+                        ball.position() - aim_position <= aim_position_threshold
+                        && ball.v() < 30.f && ball.v() >= -30.f && ball.a() < 80.f && ball.a() >= -80.f) {
+                        track.dip_angle(0.f);
+                        track.motor();
+                        printf("hint\r\n");
+                        if (aim_position == 50.f) {
+                            aim_position_threshold = 20.f;
+                            aim_position = 425.f;
+                        } else if (aim_position == 425.f) {
+                            aim_position_threshold = 20.f;
+                            aim_position = 125.f;
+                        } else if (aim_position == 125.f) {
+                            aim_position_threshold = 45.f;
+                            aim_position = 500.f;
+                        } else {
+                            aim_position_threshold = 20.f;
+                            is_running = false;
+                        }
+                        osDelay(2500);
+                    } else {
+                        track.dip_angle(aim_angle);
+                        track.motor();
+                    }
+
+                    break;
+                case ball_func_follow_red_e:
+                    if (ball.position() - aim_position >= -aim_position_threshold &&
+                        ball.position() - aim_position <= aim_position_threshold
+                        && ball.v() < 30.f && ball.v() >= -30.f && ball.a() < 80.f && ball.a() >= -80.f) {
+                        track.dip_angle(0.f);
+                        track.motor();
+                        printf("hint\r\n");
+                        is_running = false;
+                    } else {
+                        track.dip_angle(aim_angle);
+                        track.motor();
+                    }
+                    break;
+                case ball_func_follow_red_2_e:
+                    if (ball.position() - aim_position >= -aim_position_threshold &&
+                        ball.position() - aim_position <= aim_position_threshold
+                        && ball.v() < 30.f && ball.v() >= -30.f && ball.a() < 80.f && ball.a() >= -80.f) {
+                        track.dip_angle(0.f);
+                        track.motor();
+                        printf("hint\r\n");
+                    } else {
+                        track.dip_angle(aim_angle);
+                        track.motor();
+                    }
+                    break;
+                case ball_func_up_down_e: {
+                    static bool up = true;
+                    if (ball.position() - aim_position >= -aim_position_threshold &&
+                        ball.position() - aim_position <= aim_position_threshold
+                        && ball.v() < 30.f && ball.v() >= -30.f && ball.a() < 80.f && ball.a() >= -80.f) {
+                        if (up) {
+                            track.height(track.height() + 1.f);
+                            if (track.height() >= 20) {
+                                up = false;
+                            }
+                        } else {
+                            track.height(track.height() - 1.f);
+                        }
+                        track.dip_angle(0.f);
+                        track.motor();
+                        if (up == false && track.height() <= 0) {
+                            is_running = false;
+                            up = true;
+                            printf("hint\r\n");
+                        }
+                    } else {
+                        track.dip_angle(aim_angle);
+                        track.motor();
+                    }
+                    break;
+                }
+                case ball_func_ab_cd_e:
+                case ball_func_cd_ab_e: {
+                    if (ball.position() - aim_position >= -aim_position_threshold &&
+                        ball.position() - aim_position <= aim_position_threshold
+                        && ball.v() < 30.f && ball.v() >= -30.f && ball.a() < 80.f && ball.a() >= -80.f) {
+                        track.dip_angle(0.f);
+                        track.motor();
+                        is_running = false;
+                        printf("hint\r\n");
+                        osDelay(2700);
+                        if (ball_func_ab_cd_ab) {
+                        is_running = true;
+                        if (ball_func == ball_func_ab_cd_e) {
+                            aim_position = 425.f;
+                            ball_func = ball_func_cd_ab_e;
+                        } else {
+                            aim_position = 125.f;
+                            ball_func = ball_func_ab_cd_e;
+                        }
+                    }
+                    } else {
+                        track.height((ball.position() - 125.f) / 300.f * 20.f);
+                        track.dip_angle(aim_angle);
+                        track.motor();
+                    }
+                    
+                    break;
+                }
+                default:
+                    break;
             }
-            track.height_base(ball.position() + 10.f);
-            track.motor();
         }
+
         osDelay(30);
     }
 }
@@ -188,7 +369,8 @@ extern "C" void main_task(const void *) {
         } else if (strcmp(ch, "red") == 0) {
             float red_point_position;
             scanf("%f", &red_point_position);
-            aim_position = red_point_position;
+            if (ball_func == ball_func_follow_red_e || ball_func == ball_func_follow_red_2_e)
+                aim_position = red_point_position;
         } else if (strcmp(ch, "test") == 0) {
             float dip_angle, height;
             scanf("%f%f", &dip_angle, &height);

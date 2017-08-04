@@ -130,7 +130,7 @@ namespace cdh {
                     }
                 } else {
                     float k = steps_dir.y / steps_dir.x;
-                    if (k > (float) 65536 / 1000) {
+                    if (k > (float) 65536 / 1500) {
                         __HAL_TIM_SET_AUTORELOAD(&htim3, 1000 - 1);
                         __HAL_TIM_SET_AUTORELOAD(&htim2, 65536 - 1);
                     } else {
@@ -175,7 +175,7 @@ namespace cdh {
 
     glm::vec2 step_motor_couple_t::current_length() {
         vec2 length = vec2(::current_steps) / (float) step_per_loop * 2.f * pi * r;
-        return glm::vec2();
+        return length;
     }
 
 }

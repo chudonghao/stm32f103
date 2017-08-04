@@ -45,7 +45,10 @@ namespace cdh {
 
         void height_base(float height_base_) { this->height_base_ = height_base_; }
 
-        float dip_angle() { return dip_angle_; }
+        float dip_angle() {
+            vec2 length = step_motor_couple_t::current_length();
+            return (length.y - length.x) / 590.f;
+        }
 
         void dip_angle(float dip_angle_) { this->dip_angle_ = dip_angle_; }
 
