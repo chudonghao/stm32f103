@@ -83,7 +83,7 @@ namespace {
     void lcd_init() {
         LCD_Init();                                     //初始化LCD
         LCD_Display_Dir(1);
-				//视觉正方向
+        //视觉正方向
         LCD_Scan_Dir(R2L_D2U);
     }
 
@@ -184,7 +184,7 @@ void camera_refresh(void) {
     if (ov_sta)//有帧中断更新？
     {
         //写扫描方向
-       // LCD_Scan_Dir(L2R_D2U);
+        // LCD_Scan_Dir(L2R_D2U);
         LCD_Set_Window(SSD_HOR_RESOLUTION - camera_h, 0, camera_h, camera_w);
 //        if (lcddev.id == 0X1963)
 //            LCD_Set_Window((lcddev.width - camera_w) / 2, (lcddev.height - camera_h) / 2, camera_w, camera_h);//将显示区域设置到屏幕中央
@@ -208,19 +208,19 @@ void camera_refresh(void) {
                 static unsigned char y1 = 0;
                 static unsigned char v = 0;
                 static unsigned char u = 0;
-
-                OV7670_RCK_L;
-                y0 = GPIOC->IDR & 0XFF;    //???
-                OV7670_RCK_H;
-                OV7670_RCK_L;
-                u = GPIOC->IDR & 0XFF;    //???
-                OV7670_RCK_H;
-                OV7670_RCK_L;
-                y1 = GPIOC->IDR & 0XFF;    //???
-                OV7670_RCK_H;
-                OV7670_RCK_L;
-                v = GPIOC->IDR & 0XFF;    //???
-                OV7670_RCK_H;
+                if (y >= 100 && y < 180) {
+                    OV7670_RCK_L;
+                    y0 = GPIOC->IDR & 0XFF;    //???
+                    OV7670_RCK_H;
+                    OV7670_RCK_L;
+                    u = GPIOC->IDR & 0XFF;    //???
+                    OV7670_RCK_H;
+                    OV7670_RCK_L;
+                    y1 = GPIOC->IDR & 0XFF;    //???
+                    OV7670_RCK_H;
+                    OV7670_RCK_L;
+                    v = GPIOC->IDR & 0XFF;    //???
+                    OV7670_RCK_H;
 
 //                //B = 1.164(Y - 16) + 2.018(U - 128)
 //                //G = 1.164(Y - 16) - 0.813(V - 128) - 0.391(U - 128)
@@ -255,7 +255,7 @@ void camera_refresh(void) {
 //                if(y1 >= red_threshold && u1 < green_threshold && v1 < blue_threshold )
 //                    LCD->LCD_RAM = RED;
 //                else LCD->LCD_RAM = GRAY;
-                if (y >= 100 && y < 180) {
+
                     switch (color_type_yuv(y0, u, v)) {
                         case color_type_red_e:
                             if (x >= 15 && x < 305) {
@@ -343,6 +343,18 @@ void camera_refresh(void) {
                         }
                     }
                 } else/**/{
+                    OV7670_RCK_L;
+                    //y0 = GPIOC->IDR & 0XFF;    //???
+                    OV7670_RCK_H;
+                    OV7670_RCK_L;
+                    //u = GPIOC->IDR & 0XFF;    //???
+                    OV7670_RCK_H;
+                    OV7670_RCK_L;
+                    //y1 = GPIOC->IDR & 0XFF;    //???
+                    OV7670_RCK_H;
+                    OV7670_RCK_L;
+                    //v = GPIOC->IDR & 0XFF;    //???
+                    OV7670_RCK_H;
                     if (show_image_process) {
                         LCD->LCD_RAM = (y0 << 8) | u;
                         LCD->LCD_RAM = (y1 << 8) | v;
@@ -386,7 +398,7 @@ void camera_refresh(void) {
             printf("ball %.3f\r\n", x_ball_zero_sampling);
 
 
-            if(lose_valid_frame == true){
+            if (lose_valid_frame == true) {
                 lose_valid_frame = false;
                 need_clear_error_frame = true;
             }
@@ -413,21 +425,23 @@ void main_task(void *) {
         camera_refresh();//更新显示
     }
 }
-void lcd_task(void*){
-    for(;;){
+
+void lcd_task(void *) {
+    for (;;) {
         static float old_x_ball_position_sampling = 0.f;
-        if (need_clear_error_frame == true){
+        if (need_clear_error_frame == true) {
             screen_base_init();
             need_clear_error_frame = false;
         }
-        if(lose_valid_frame == false && old_x_ball_position_sampling != x_ball_zero_sampling){
+        if (lose_valid_frame == false && old_x_ball_position_sampling != x_ball_zero_sampling) {
             show_ball_position(x_ball_zero_sampling);
-            old_x_ball_position_sampling=x_ball_zero_sampling;
-        }else{
+            old_x_ball_position_sampling = x_ball_zero_sampling;
+        } else {
             taskYIELD();
         }
     }
 }
+
 void control_task(void *) {
     for (;;) {
         static char ch[128];
@@ -485,6 +499,6 @@ int main(void) {
 
     xTaskCreate(main_task, 0, 200, 0, 1, 0);
     xTaskCreate(control_task, 0, 200, 0, 1, 0);
-    xTaskCreate(lcd_task,0,200,0,1,0);
+    xTaskCreate(lcd_task, 0, 200, 0, 1, 0);
     vTaskStartScheduler();
 }
