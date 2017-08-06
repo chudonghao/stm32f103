@@ -301,7 +301,7 @@ extern "C" void pid_task(const void *) {
                         && ball.v() < 30.f && ball.v() >= -30.f && ball.a() < 80.f && ball.a() >= -80.f) {
                         if (up) {
                             track.height(track.height() + 1.f);
-                            if (track.height() >= 20) {
+                            if (track.height() >= 80) {
                                 up = false;
                             }
                         } else {
