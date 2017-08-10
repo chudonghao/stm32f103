@@ -163,8 +163,8 @@ extern "C" void pid_task(const void *) {
     arm_pid_init_f32(&arm_pid_instance2, 1);
     arm_fir_init_f32(&arm_fir_instance1, TAP_SIZE, TAP, arm_fir_state1, BLOCK_SIZE);
     arm_fir_init_f32(&arm_fir_instance2, TAP_SIZE, TAP, arm_fir_state2, BLOCK_SIZE);
-    arm_fir_init_f32(&arm_fir_instance3, TAP_SIZE, TAP, arm_fir_state1, BLOCK_SIZE);
-    arm_fir_init_f32(&arm_fir_instance4, TAP_SIZE, TAP, arm_fir_state2, BLOCK_SIZE);
+    arm_fir_init_f32(&arm_fir_instance3, TAP_SIZE, TAP, arm_fir_state3, BLOCK_SIZE);
+    arm_fir_init_f32(&arm_fir_instance4, TAP_SIZE, TAP, arm_fir_state4, BLOCK_SIZE);
     for (;;) {
         static float last_ms;
         float ms = xTaskGetTickCount();
@@ -178,7 +178,6 @@ extern "C" void pid_task(const void *) {
         if (last_ms != ms) {
             new_ball_v = (new_ball_p - ball.position()) * 1000.f / (ms - last_ms);
             ball_a_sampling = (new_ball_v - ball.v()) * 1000.f / (ms - last_ms);
-            //ball_a_sampling = -track.dip_angle() * 9800.f;
         }
         arm_fir_f32(&arm_fir_instance3, &ball_a_sampling.x, &new_ball_a.x, 1);
         arm_fir_f32(&arm_fir_instance4, &ball_a_sampling.y, &new_ball_a.y, 1);
@@ -187,8 +186,8 @@ extern "C" void pid_task(const void *) {
         ball.position(new_ball_p);
         ball.v(new_ball_v);
         ball.a(new_ball_a);
-        printf("%f,%f,%f,%f,%f,%f;\r\n", ball.position().x, ball.position().y
-        , ball.v().x,ball.v().y,ball.a().x,ball.a().y);
+        printf("%f,%f,%f,%f;\r\n", ball_position_sampling.x, ball.position().x
+        , ball.v().x,ball.a().x);
 
         if (is_running) {
             vec2 pid_input = ::pid_input(aim_position);
@@ -211,7 +210,7 @@ extern "C" void main_task(const void *) {
         scanf("%s", ch);
         if (strcmp(ch, "ball") == 0) {
             scanf("%f%f", &ball_position_sampling.x,&ball_position_sampling.y);
-            //printf("get data:%f %f %f %f\r\n", ms, y_left,y_right,ball_position);
+//            printf("get data:%f %f\r\n", ball_position_sampling.x,ball_position_sampling.y);
         } 
 //        else if (strcmp(ch, "red") == 0) {
 //            float red_point_position;
