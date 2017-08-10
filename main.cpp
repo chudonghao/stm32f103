@@ -102,7 +102,7 @@ namespace {
         if (v >= 150) {
             return color_type_red_e;
         }
-        if (u >= 150) {
+        if (u >= 150 && y < 120) {
             return color_type_blue_e;
         }
         if (y < 70) {
