@@ -121,6 +121,10 @@ extern "C" u16 * rgb_buffer;
 extern "C" u8 draw_frame_on_lcd;
 extern "C" void on_frame_got(void) {
     ball_point_on_canvas.restart_record();
+    left_point_on_canvas.restart_record();
+    right_point_on_canvas.restart_record();
+    top_point_on_canvas.restart_record();
+    bottom_point_on_canvas.restart_record();
     for (int y = 0; y < 200; ++y) {
         for (int x = 0; x <200; x+=2) {
 //          u16 color;
