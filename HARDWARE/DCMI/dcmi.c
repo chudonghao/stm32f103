@@ -28,7 +28,6 @@ void DCMI_IRQHandler(void)
 	{
 		jpeg_data_process(); 	//jpeg数据处理	
 		DCMI_ClearITPendingBit(DCMI_IT_FRAME);//清除帧中断
-		LED1=!LED1;
 		ov_frame++;  
 	}
 } 

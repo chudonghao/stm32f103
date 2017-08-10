@@ -231,7 +231,7 @@ extern "C" void on_frame_got(void) {
             ball_x = 620.0f / right_left_pixel * ball_x_pixel;
             ball_y = 620.0f / top_bottom_pixel * ball_y_pixel;
 
-            printf("ball %f %f\r\n",ball_x,ball_y);
+            printf("ball %.3f %.3f\r\n",ball_x,ball_y);
         }
     }
 

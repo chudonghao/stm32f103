@@ -21,6 +21,7 @@
 __align(4) u16 rgb_buf[200*200 + 16];
 u16 * rgb_buffer = &rgb_buf[16];
 u8 frame_state = 0;
+u8 draw_frame_on_lcd;
 void on_frame_got(void);
 										//0,数据没有采集完;
 										//1,数据采集完了,但是还没处理;
@@ -46,6 +47,7 @@ void jpeg_data_process(void)
         DMA_SetCurrDataCounter(DMA2_Stream1,100*200);//传输长度为jpeg_buf_size*4字节
         DMA_Cmd(DMA2_Stream1, ENABLE);//重新传输
         frame_state=0;						//标记数据未采集
+        LED1=!LED1;
     }
 } 
 #define write_SCCB SCCB_WR_Reg
@@ -69,7 +71,7 @@ void rgb565_test(void)
 
 
     
- 	OV2640_ImageWin_Set(200,100,400,400);
+ 	OV2640_ImageWin_Set(150,50,500,500);
     OV2640_OutSize_Set(200,200);
     
 	My_DCMI_Init();			//DCMI配置
@@ -103,7 +105,8 @@ void rgb565_test(void)
 					sprintf((char*)msgbuf,"%s",EFFECTS_TBL[effect]);
 					break;
 				case WKUP_PRES:	//1:1尺寸(显示真实尺寸)/缩放	    
-					
+					draw_frame_on_lcd = !draw_frame_on_lcd;
+                    LED0 = !LED0;
 					break;
 			}
 			LCD_ShowString(30,50,210,16,16,msgbuf);//显示提示内容
@@ -112,17 +115,19 @@ void rgb565_test(void)
 		} 
 		
         if(frame_state == 1){
-            LCD_Set_Window(0,0,200,200);
-            LCD_WriteRAM_Prepare();		//开始写入GRAM
+
             memcpy(&rgb_buffer[200*200 - 16],&rgb_buf[0],16*2);
-            for(int i = 0;i<200*200;++i){
-                LCD->LCD_RAM = (rgb_buffer)[i];
-            }
-            LCD_Set_Window(200,0,200,200);
-            LCD_WriteRAM_Prepare();		//开始写入GRAM
             on_frame_got();
-            sprintf((char*)msgbuf,"%u,%u,%u,%u",(u32)(rgb_buffer[100*200+100]&0xff),(u32)(rgb_buffer[100*200+100]>>8),(u32)(rgb_buffer[100*200+101])&0xff,(u32)(rgb_buffer[100*200+101]>>8));
-            LCD_ShowString(0,200,200,200,16,msgbuf);
+            if(draw_frame_on_lcd){
+                LCD_Set_Window(0,0,200,200);
+                LCD_WriteRAM_Prepare();		//开始写入GRAM
+                for(int i = 0;i<200*200;++i){
+                    LCD->LCD_RAM = (rgb_buffer)[i];
+                }
+                sprintf((char*)msgbuf,"%u,%u,%u,%u",(u32)(rgb_buffer[100*200+100]&0xff),(u32)(rgb_buffer[100*200+100]>>8),(u32)(rgb_buffer[100*200+101])&0xff,(u32)(rgb_buffer[100*200+101]>>8));
+                LCD_ShowString(0,200,200,200,16,msgbuf);
+            }
+
             frame_state = 2;
         }
         //delay_ms(10);
