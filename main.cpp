@@ -30,10 +30,10 @@ namespace {
     arm_fir_instance_f32 arm_fir_instance2;
     arm_fir_instance_f32 arm_fir_instance3;
     arm_fir_instance_f32 arm_fir_instance4;
-    float arm_fir_state1[TAP_SIZE + BLOCK_SIZE - 1];
-    float arm_fir_state2[TAP_SIZE + BLOCK_SIZE - 1];
-    float arm_fir_state3[TAP_SIZE + BLOCK_SIZE - 1];
-    float arm_fir_state4[TAP_SIZE + BLOCK_SIZE - 1];
+    float arm_fir_state1[TAP20_FS60_FC1_SIZE + BLOCK_SIZE - 1];
+    float arm_fir_state2[TAP20_FS60_FC1_SIZE + BLOCK_SIZE - 1];
+    float arm_fir_state3[TAP20_FS60_FC1_SIZE + BLOCK_SIZE - 1];
+    float arm_fir_state4[TAP20_FS60_FC1_SIZE + BLOCK_SIZE - 1];
 //    arm_fir_instance_f32 arm_fir_instance3;
 //    float arm_fir_state3[TAP_SIZE+BLOCK_SIZE-1];
     enum ball_func_e {
@@ -100,7 +100,7 @@ static inline vec2 compute_aim_v(vec2 diff_p) {
     if (abs_diff_p< aim_position_threshold.x) {
         res.x = 0.f;
     }else{
-        res.x = (abs_diff_p + 10.f) * 0.8f * sign_diff_p;
+        res.x = (abs_diff_p + 10.f) * 0.5f * sign_diff_p;
     }
     if (diff_p.y < 0) {
         abs_diff_p = -diff_p.y;
@@ -112,11 +112,11 @@ static inline vec2 compute_aim_v(vec2 diff_p) {
     if (abs_diff_p< aim_position_threshold.y) {
         res.y = 0.f;
     }else{
-        res.y = (abs_diff_p + 10.f) * 0.7f * sign_diff_p;
+        res.y = (abs_diff_p + 10.f) * 0.5f * sign_diff_p;
     }
     return res;
 }
-const static float max_a = 120.f;
+const static float max_a = 200.f;
 static inline vec2 compute_aim_a(vec2 diff_v){
     vec2 aim_a = vec2(0.f);
     if (diff_v.x >= 70.f) {
@@ -148,30 +148,37 @@ static inline ivec2 pid_input(vec2 except_position) {
 
 extern "C" void pid_task(const void *) {
     arm_pid_instance1.Kp = 1.f / 9800.f;
-    arm_pid_instance1.Ki = arm_pid_instance1.Kp * 0.15f;
-    arm_pid_instance1.Kd = arm_pid_instance1.Kp * 0.1f;
+    arm_pid_instance1.Ki = 0.f;
+    arm_pid_instance1.Kd = 0.f;
+    arm_pid_instance2.Kp = arm_pid_instance1.Kp;
+    arm_pid_instance2.Ki = arm_pid_instance1.Ki;
+    arm_pid_instance2.Kd = arm_pid_instance1.Kd;
     arm_pid_init_f32(&arm_pid_instance1, 1);
-    arm_pid_instance2.Kp = 1.f / 9800.f;
-    arm_pid_instance2.Ki = arm_pid_instance2.Kp * 0.15f;
-    arm_pid_instance2.Kd = arm_pid_instance2.Kp * 0.1f;
     arm_pid_init_f32(&arm_pid_instance2, 1);
-    arm_fir_init_f32(&arm_fir_instance1, TAP_SIZE, TAP, arm_fir_state1, BLOCK_SIZE);
-    arm_fir_init_f32(&arm_fir_instance2, TAP_SIZE, TAP, arm_fir_state2, BLOCK_SIZE);
-    arm_fir_init_f32(&arm_fir_instance3, TAP_SIZE, TAP, arm_fir_state3, BLOCK_SIZE);
-    arm_fir_init_f32(&arm_fir_instance4, TAP_SIZE, TAP, arm_fir_state4, BLOCK_SIZE);
+
+    arm_fir_init_f32(&arm_fir_instance1, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state1, BLOCK_SIZE);
+    arm_fir_init_f32(&arm_fir_instance2, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state2, BLOCK_SIZE);
+    arm_fir_init_f32(&arm_fir_instance3, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state3, BLOCK_SIZE);
+    arm_fir_init_f32(&arm_fir_instance4, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state4, BLOCK_SIZE);
     for (;;) {
         static float last_ms;
-        float ms = xTaskGetTickCount();
-        vec2 new_ball_p = vec2(0.f);
-        vec2 new_ball_v = vec2(0.f);
-        vec2 ball_a_sampling = vec2(0.f);
-        vec2 new_ball_a = vec2(0.f);
+        static float ms;
+        static vec2 new_ball_p = vec2(0.f);
+        static vec2 new_ball_v = vec2(0.f);
+        static vec2 ball_a_sampling = vec2(0.f);
+        static vec2 new_ball_a = vec2(0.f);
+        ms = xTaskGetTickCount();
+        new_ball_p = vec2(0.f);
+        new_ball_v = vec2(0.f);
+        ball_a_sampling = vec2(0.f);
+        new_ball_a = vec2(0.f);
 
         arm_fir_f32(&arm_fir_instance1, &ball_position_sampling.x, &new_ball_p.x, 1);
         arm_fir_f32(&arm_fir_instance2, &ball_position_sampling.y, &new_ball_p.y, 1);
         if (last_ms != ms) {
             new_ball_v = (new_ball_p - ball.position()) * 1000.f / (ms - last_ms);
             ball_a_sampling = (new_ball_v - ball.v()) * 1000.f / (ms - last_ms);
+            //ball_a_sampling = - flat_board.dip_angle() * 9800.f;
         }
         arm_fir_f32(&arm_fir_instance3, &ball_a_sampling.x, &new_ball_a.x, 1);
         arm_fir_f32(&arm_fir_instance4, &ball_a_sampling.y, &new_ball_a.y, 1);
@@ -180,7 +187,7 @@ extern "C" void pid_task(const void *) {
         ball.position(new_ball_p);
         ball.v(new_ball_v);
         ball.a(new_ball_a);
-        printf("%f,%f,%f,%f;\r\n", ball_position_sampling.x, ball.position().x
+        printf("%f,%f,%f,%f,%f;\r\n",ms, ball_position_sampling.x, ball.position().x
         , ball.v().x,ball.a().x);
 
         if (is_running) {
@@ -191,24 +198,29 @@ extern "C" void pid_task(const void *) {
             //printf("aim_v=%f,ball.p=%f,aim_angle=%f\r\n",aim_v,ball.position(),aim_angle);
             switch (ball_func) {
                 case ball_func_to_zero_e:
+                    aim_angle.x = 0.f;//TODO 测试单向运动
                     flat_board.dip_angle(aim_angle);
                     flat_board.motor();
                     break;
             }
         }
 
-        osDelay(30);
+        osDelay(16);//达到60Hz
     }
 }
+extern "C" unsigned char uart1_have_data_to_read();
 extern "C" void main_task(const void *) {
     printf("inited.\r\n");
     for (;;) {
         static char ch[128];
+        if(!uart1_have_data_to_read()){
+            osThreadYield();
+        }
         scanf("%s", ch);
         if (strcmp(ch, "ball") == 0) {
             scanf("%f%f", &ball_position_sampling.x,&ball_position_sampling.y);
 //            printf("get data:%f %f\r\n", ball_position_sampling.x,ball_position_sampling.y);
-        } 
+        }
 //        else if (strcmp(ch, "red") == 0) {
 //            float red_point_position;
 //            scanf("%f", &red_point_position);

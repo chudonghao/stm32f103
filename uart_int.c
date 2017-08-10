@@ -82,3 +82,11 @@ int fgetc(FILE *f){
     }
     return res;
 }
+
+unsigned char uart1_have_data_to_read(){
+    if(uart1_rx_buffer_start == uart1_rx_buffer_end){
+        return 0;
+    }else{
+        return 1;
+    }
+};

@@ -77,6 +77,12 @@ namespace cdh {
     public:
         flat_board_t() : dip_angle_(0.f, 0.f) {}
 
+        vec2 real_dip_angle() {
+            vec2 res = step_motor_couple_t::current_length();
+            res.x /= distance_motors_and_zero.x;
+            res.y /= distance_motors_and_zero.y;
+            return res;
+        }
         const vec2 &dip_angle() { return dip_angle_; }
 
         void dip_angle(const vec2 &dip_angle_) { this->dip_angle_ = dip_angle_; }
