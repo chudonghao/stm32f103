@@ -19,7 +19,7 @@ using namespace std;
 using namespace glm;
 namespace {
     const int BLOCK_SIZE = 20;
-    track_t track;
+    flat_board_t flat_board;
     ball_t ball;
     vec2 ball_position_sampling;
     vec2 aim_position = vec2(0.f);
@@ -37,16 +37,10 @@ namespace {
 //    arm_fir_instance_f32 arm_fir_instance3;
 //    float arm_fir_state3[TAP_SIZE+BLOCK_SIZE-1];
     enum ball_func_e {
-        ball_func_ma_cd_ab_dn_e = 1,
-        ball_func_follow_red_e,
-        ball_func_follow_red_2_e,
-        ball_func_up_down_e,
-        ball_func_ab_cd_e,
-        ball_func_cd_ab_e,
+        ball_func_to_zero_e = 1,
     };
     ball_func_e ball_func;
     bool is_running = false;
-    bool ball_func_ab_cd_ab = false;
 }
 extern "C" void key_board_task(const void *) {
     static int old_key = -1;
@@ -64,11 +58,10 @@ extern "C" void key_board_task(const void *) {
             delay_count = 0;
         }
         if (key == 0) {
-            ball_func_ab_cd_ab = false;
             is_running = false;
             arm_pid_reset_f32(&arm_pid_instance1);
             arm_pid_reset_f32(&arm_pid_instance2);
-            track.set_base();
+            flat_board.set_base();
         } else if (key == 2) {
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.y += 1;
@@ -86,6 +79,7 @@ extern "C" void key_board_task(const void *) {
             cur.y -= 1;
             step_motor_couple_t::set_next_steps(cur);
         } else if (key == 8) {
+            ball_func = ball_func_to_zero_e;
             is_running = true;
         }
         osDelay(10);
@@ -118,26 +112,26 @@ static inline vec2 compute_aim_v(vec2 diff_p) {
     if (abs_diff_p< aim_position_threshold.y) {
         res.y = 0.f;
     }else{
-        res.y = (abs_diff_p + 10.f) * 0.8f * sign_diff_p;
+        res.y = (abs_diff_p + 10.f) * 0.7f * sign_diff_p;
     }
     return res;
 }
-
+const static float max_a = 120.f;
 static inline vec2 compute_aim_a(vec2 diff_v){
     vec2 aim_a = vec2(0.f);
     if (diff_v.x >= 70.f) {
-        aim_a.x = 240.f;
+        aim_a.x = max_a;
     } else if (diff_v.x < -70.f) {
-        aim_a.x = -240.f;
+        aim_a.x = -max_a;
     } else {
-        aim_a.x = (diff_v.x) * 240.f / 70.f;
+        aim_a.x = (diff_v.x) * max_a / 70.f;
     }
     if (diff_v.y >= 70.f) {
-        aim_a.y = 240.f;
+        aim_a.y = max_a;
     } else if (diff_v.y < -70.f) {
-        aim_a.y = -240.f;
+        aim_a.y = -max_a;
     } else {
-        aim_a.y = (diff_v.y) * 240.f / 70.f;
+        aim_a.y = (diff_v.y) * max_a / 70.f;
     }
     return aim_a;
 }
@@ -196,7 +190,10 @@ extern "C" void pid_task(const void *) {
             aim_angle.y= -arm_pid_f32(&arm_pid_instance2, pid_input.y);
             //printf("aim_v=%f,ball.p=%f,aim_angle=%f\r\n",aim_v,ball.position(),aim_angle);
             switch (ball_func) {
-
+                case ball_func_to_zero_e:
+                    flat_board.dip_angle(aim_angle);
+                    flat_board.motor();
+                    break;
             }
         }
 
@@ -222,19 +219,14 @@ extern "C" void main_task(const void *) {
             float dip_angle, height;
             scanf("%f%f", &dip_angle, &height);
             printf("test:%f %f\r\n", dip_angle, height);
-            track.dip_angle(dip_angle);
-            track.height(height);
-            while (track.motor() == -1) {
-                step_motor_couple_t::step();
-            }
-            while (track.motor() == -1) {
-                step_motor_couple_t::step();
-            }
-        } else if (strcmp(ch, "test2") == 0) {
-            float height_base;
-            scanf("%f", &height_base);
-            printf("test2:%f\r\n", height_base);
-            track.height_base(height_base);
+//            track.dip_angle(dip_angle);
+//            track.height(height);
+//            while (track.motor() == -1) {
+//                step_motor_couple_t::step();
+//            }
+//            while (track.motor() == -1) {
+//                step_motor_couple_t::step();
+//            }
         } else {
             //printf("unknown func:%s\r\n", ch);
         }
