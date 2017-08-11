@@ -13,6 +13,7 @@
 #include "usart3.h"
 #include "undecided.h"
 #include "fdacoefs.h"
+#include "led0.h"
 
 using namespace cdh;
 using namespace std;
@@ -53,6 +54,7 @@ namespace {
     };
     ball_func_e ball_func;
     bool is_running = false;
+    bool keep_running = false;
     bool get_point_a_b_c_d = false;
     int ball_func_a_b_c_d_state_index = 0;
     vec2 ball_func_a_b_c_d_state[7];
@@ -91,6 +93,32 @@ namespace {
             ball.v(v);
         }
         last_ms = ms;
+    }
+
+    bool common_stop_condition_satisfied() {
+        if (abs(ball_position_sampling.x - aim_position.x) < 10.f
+            && abs(ball_position_sampling.y - aim_position.y) < 10.f) {
+            if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool common_enter_condition_satisfied() {
+        if (abs(ball_position_sampling.x - aim_position.x) < 12.f
+            && abs(ball_position_sampling.y - aim_position.y) < 12.f) {
+            return true;
+        }
+        return false;
+    }
+
+    bool common_pass_condition_satisfied() {
+        if (abs(ball_position_sampling.x - aim_position.x) < 30.f
+            && abs(ball_position_sampling.y - aim_position.y) < 30.f) {
+            return true;
+        }
+        return false;
     }
 
     void refresh_pid_arg() {
@@ -154,24 +182,35 @@ namespace {
     }
 
     void ball_func_1_to_5() {
-        if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
-            && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
-            if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {
-                flat_board.dip_angle(vec2(0.f));
-                flat_board.motor();
-                is_running = false;
-                return;
-            }
+        if (common_stop_condition_satisfied()) {
+            flat_board.dip_angle(vec2(0.f));
+            flat_board.motor();
+            is_running = false;
+            return;
         }
         common_ball_move_func();
     }
 
     void ball_func_to_2() {
-        if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
-            && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
-            if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {
+        if (common_stop_condition_satisfied()) {
+            flat_board.dip_angle(vec2(0.f));
+            flat_board.motor();
+            is_running = false;
+            return;
+        }
+        common_ball_move_func();
+    }
+
+    void ball_func_1_4_5() {
+        if (aim_position == POINT_4) {
+            if (common_stop_condition_satisfied()) {
                 flat_board.dip_angle(vec2(0.f));
                 flat_board.motor();
+                aim_position = POINT_5;
+                osDelay(1800);
+            }
+        } else {
+            if (common_stop_condition_satisfied()) {
                 is_running = false;
                 return;
             }
@@ -179,16 +218,16 @@ namespace {
         common_ball_move_func();
     }
 
-    void ball_func_1_4_5() {
-        if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
-            && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
-            if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {
-                flat_board.dip_angle(vec2(0.f));
-                flat_board.motor();
-                if (aim_position == POINT_4) {
-                    aim_position = POINT_5;
-                    osDelay(1800);
-                } else {
+    void ball_func_1_9() {
+        if (aim_position == POINT_17) {
+            if (common_pass_condition_satisfied()) {//经过中间点
+                aim_position = POINT_9;
+            }
+        } else {//point_9
+            if (common_stop_condition_satisfied()) {
+                if (!keep_running) {
+                    flat_board.dip_angle(vec2(0.f));
+                    flat_board.motor();
                     is_running = false;
                     return;
                 }
@@ -197,37 +236,18 @@ namespace {
         common_ball_move_func();
     }
 
-    void ball_func_1_9() {
-        if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
-            && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
-            if (aim_position == POINT_17) {//抵达中间点
-                aim_position = POINT_9;
-                aim_position_threshold = vec2(10.f);
-            } else if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {//抵达9
-                flat_board.dip_angle(vec2(0.f));
-                flat_board.motor();
-                is_running = false;
-                return;
-            }
-        }
-        common_ball_move_func();
-    }
-
     void ball_func_1_2_6_9() {
-        if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
-            && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
-            if (aim_position == POINT_2) {//抵达中间点
+        if (aim_position == POINT_2) {
+            if (common_enter_condition_satisfied())//进入point_2
                 aim_position = POINT_6;
-                aim_position_threshold = vec2(10.f);
-            } else if (aim_position == POINT_6) {
+        } else if (aim_position == POINT_6) {
+            if (common_enter_condition_satisfied())
                 aim_position = POINT_9;
-                aim_position_threshold = vec2(10.f);
-            } else if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {//抵达9
-                flat_board.dip_angle(vec2(0.f));
-                flat_board.motor();
-                is_running = false;
-                return;
-            }
+        } else if (common_stop_condition_satisfied()) {//抵达9
+            flat_board.dip_angle(vec2(0.f));
+            flat_board.motor();
+            is_running = false;
+            return;
         }
         common_ball_move_func();
     }
@@ -282,9 +302,12 @@ namespace {
         ball_func_a_b_c_d_state[1] = ball_func_a_b_c_d_state[2];
         ball_func_a_b_c_d_state[3] = ball_func_a_b_c_d_state[4];
         ball_func_a_b_c_d_state[5] = ball_func_a_b_c_d_state[6];
-        ball_func_a_b_c_d_state[1] = two_point_interpolation(ball_func_a_b_c_d_state[0], ball_func_a_b_c_d_state[1]);
-        ball_func_a_b_c_d_state[3] = two_point_interpolation(ball_func_a_b_c_d_state[2], ball_func_a_b_c_d_state[4]);
-        ball_func_a_b_c_d_state[5] = two_point_interpolation(ball_func_a_b_c_d_state[4], ball_func_a_b_c_d_state[6]);
+        ball_func_a_b_c_d_state[1] = two_point_interpolation(ball_func_a_b_c_d_state[0],
+                                                             ball_func_a_b_c_d_state[1]);
+        ball_func_a_b_c_d_state[3] = two_point_interpolation(ball_func_a_b_c_d_state[2],
+                                                             ball_func_a_b_c_d_state[4]);
+        ball_func_a_b_c_d_state[5] = two_point_interpolation(ball_func_a_b_c_d_state[4],
+                                                             ball_func_a_b_c_d_state[6]);
 
         printf("ball_state:\r\n");
         printf("%f,%f;\r\n", ball_func_a_b_c_d_state[0].x, ball_func_a_b_c_d_state[0].y);
@@ -297,26 +320,26 @@ namespace {
     }
 
     void ball_func_a_b_c_d() {
-        if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
-            && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
-            if (ball_func_a_b_c_d_state_index == 6) {
-                if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {//抵达终点
-                    flat_board.dip_angle(vec2(0.f));
-                    flat_board.motor();
-                    is_running = false;
-                    return;
-                }
-            } else {
+        if (ball_func_a_b_c_d_state_index == 6) {
+            if (common_stop_condition_satisfied()) {//抵达终点
+                flat_board.dip_angle(vec2(0.f));
+                flat_board.motor();
+                is_running = false;
+                return;
+            }
+        } else if (ball_func_a_b_c_d_state_index == 0 || ball_func_a_b_c_d_state_index == 2 ||
+                   ball_func_a_b_c_d_state_index == 4) {
+            if (common_enter_condition_satisfied()) {
                 arm_pid_reset_f32(&arm_pid_instance1);
                 arm_pid_reset_f32(&arm_pid_instance2);
-                if (ball_func_a_b_c_d_state_index == 0
-                    || ball_func_a_b_c_d_state_index == 2
-                    || ball_func_a_b_c_d_state_index == 4
-                        ) {
-                    aim_position_threshold = vec2(30.f);
-                } else {
-                    aim_position_threshold = vec2(10.f);
-                }
+                ++ball_func_a_b_c_d_state_index;
+                aim_position = ball_func_a_b_c_d_state[ball_func_a_b_c_d_state_index];
+            }
+        } else if (ball_func_a_b_c_d_state_index == 1 || ball_func_a_b_c_d_state_index == 3 ||
+                   ball_func_a_b_c_d_state_index == 5) {
+            if (common_pass_condition_satisfied()) {
+                arm_pid_reset_f32(&arm_pid_instance1);
+                arm_pid_reset_f32(&arm_pid_instance2);
                 ++ball_func_a_b_c_d_state_index;
                 aim_position = ball_func_a_b_c_d_state[ball_func_a_b_c_d_state_index];
             }
@@ -325,30 +348,31 @@ namespace {
     }
 
     void ball_func_circle() {
-        if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
-            && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
-            if (aim_position == POINT_9) {//抵达终点
-                if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {
-                    flat_board.dip_angle(vec2(0.f));
-                    flat_board.motor();
-                    is_running = false;
-                    return;
-                }
-            } else if (aim_position == POINT_4) {//从起点出发
+        if (aim_position == POINT_9) {//抵达终点
+            if (common_stop_condition_satisfied()) {
+                flat_board.dip_angle(vec2(0.f));
+                flat_board.motor();
+                is_running = false;
+                return;
+            }
+        } else if (aim_position == POINT_4) {//从起点出发
+            if (common_enter_condition_satisfied())
                 aim_position = POINT_14;
-                aim_position_threshold = vec2(30.f);
-            } else if (aim_position == POINT_14) {//圆上第一个点
+        } else if (aim_position == POINT_14) {//圆上第一个点
+            if (common_pass_condition_satisfied())
                 aim_position = POINT_20;
-            } else if (aim_position == POINT_20) {//圆上第二个点
+        } else if (aim_position == POINT_20) {//圆上第二个点
+            if (common_pass_condition_satisfied())
                 aim_position = POINT_11;
-            } else if (aim_position == POINT_11) {//圆上第三个点
+        } else if (aim_position == POINT_11) {//圆上第三个点
+            if (common_pass_condition_satisfied())
                 aim_position = POINT_17;
-            } else if (aim_position == POINT_17) {//圆上第四个点
+        } else if (aim_position == POINT_17) {//圆上第四个点
+            if (common_pass_condition_satisfied()) {
                 ++ball_func_circle_state;
                 if (ball_func_circle_state == 3) {//三圈完成
                     ball_func_circle_state = 0;
                     aim_position = POINT_9;
-                    aim_position_threshold = vec2(10.f);
                 } else {
                     aim_position = POINT_14;//进入下一圈
                 }
@@ -358,6 +382,7 @@ namespace {
     }
 
 }
+
 extern "C" void key_board_task(const void *) {
     static int old_key = -1;
     static int delay_count = 0;
@@ -473,6 +498,7 @@ extern "C" void key_board_task(const void *) {
                 case key_board_t::key_board_3_e:
                     break;
                 case key_board_t::key_board_4_e:
+                    keep_running = !keep_running;
                     break;
                 case key_board_t::key_board_5_e: {
                     ivec2 cur = step_motor_couple_t::current_steps();
@@ -537,7 +563,13 @@ extern "C" void key_board_task(const void *) {
                 default:
                     break;
             }
-        osDelay(10);
+        if(key != key_board_t::key_board_none_e){
+            led0_t::on();
+            osDelay(10);
+            led0_t::off();
+        }else{
+            osDelay(30);
+        }
     }
 }
 
