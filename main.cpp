@@ -66,18 +66,22 @@ extern "C" void key_board_task(const void *) {
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.y += 1;
             step_motor_couple_t::set_next_steps(cur);
+            step_motor_couple_t::step();
         } else if (key == 5) {
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.x -= 1;
             step_motor_couple_t::set_next_steps(cur);
+            step_motor_couple_t::step();
         } else if (key == 1) {
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.x += 1;
             step_motor_couple_t::set_next_steps(cur);
+            step_motor_couple_t::step();
         } else if (key == 6) {
             ivec2 cur = step_motor_couple_t::current_steps();
             cur.y -= 1;
             step_motor_couple_t::set_next_steps(cur);
+            step_motor_couple_t::step();
         } else if (key == 8) {
             ball_func = ball_func_to_zero_e;
             is_running = true;
@@ -147,69 +151,78 @@ static inline ivec2 pid_input(vec2 except_position) {
 }
 
 extern "C" void pid_task(const void *) {
-    arm_pid_instance1.Kp = 1.f / 9800.f;
-    arm_pid_instance1.Ki = 0.f;
-    arm_pid_instance1.Kd = 0.f;
-    arm_pid_instance2.Kp = arm_pid_instance1.Kp;
-    arm_pid_instance2.Ki = arm_pid_instance1.Ki;
-    arm_pid_instance2.Kd = arm_pid_instance1.Kd;
-    arm_pid_init_f32(&arm_pid_instance1, 1);
-    arm_pid_init_f32(&arm_pid_instance2, 1);
-
-    arm_fir_init_f32(&arm_fir_instance1, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state1, BLOCK_SIZE);
-    arm_fir_init_f32(&arm_fir_instance2, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state2, BLOCK_SIZE);
-    arm_fir_init_f32(&arm_fir_instance3, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state3, BLOCK_SIZE);
-    arm_fir_init_f32(&arm_fir_instance4, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state4, BLOCK_SIZE);
-    for (;;) {
-        static float last_ms;
-        static float ms;
-        static vec2 new_ball_p = vec2(0.f);
-        static vec2 new_ball_v = vec2(0.f);
-        static vec2 ball_a_sampling = vec2(0.f);
-        static vec2 new_ball_a = vec2(0.f);
-        ms = xTaskGetTickCount();
-        new_ball_p = vec2(0.f);
-        new_ball_v = vec2(0.f);
-        ball_a_sampling = vec2(0.f);
-        new_ball_a = vec2(0.f);
-
-        arm_fir_f32(&arm_fir_instance1, &ball_position_sampling.x, &new_ball_p.x, 1);
-        arm_fir_f32(&arm_fir_instance2, &ball_position_sampling.y, &new_ball_p.y, 1);
-        if (last_ms != ms) {
-            new_ball_v = (new_ball_p - ball.position()) * 1000.f / (ms - last_ms);
-            ball_a_sampling = (new_ball_v - ball.v()) * 1000.f / (ms - last_ms);
-            //ball_a_sampling = - flat_board.dip_angle() * 9800.f;
-        }
-        arm_fir_f32(&arm_fir_instance3, &ball_a_sampling.x, &new_ball_a.x, 1);
-        arm_fir_f32(&arm_fir_instance4, &ball_a_sampling.y, &new_ball_a.y, 1);
-
-        last_ms = ms;
-        ball.position(new_ball_p);
-        ball.v(new_ball_v);
-        ball.a(new_ball_a);
-        printf("%f,%f,%f,%f,%f;\r\n",ms, ball_position_sampling.x, ball.position().x
-        , ball.v().x,ball.a().x);
-
-        if (is_running) {
-            vec2 pid_input = ::pid_input(aim_position);
-            vec2 aim_angle;
-            aim_angle.x= -arm_pid_f32(&arm_pid_instance1, pid_input.x);
-            aim_angle.y= -arm_pid_f32(&arm_pid_instance2, pid_input.y);
-            //printf("aim_v=%f,ball.p=%f,aim_angle=%f\r\n",aim_v,ball.position(),aim_angle);
-            switch (ball_func) {
-                case ball_func_to_zero_e:
-                    aim_angle.x = 0.f;//TODO 测试单向运动
-                    flat_board.dip_angle(aim_angle);
-                    flat_board.motor();
-                    break;
-            }
-        }
-
-        osDelay(16);//达到60Hz
-    }
+    osThreadTerminate(osThreadGetId());
+//    arm_pid_instance1.Kp = 1.f / 9800.f;
+//    arm_pid_instance1.Ki = 0.f;
+//    arm_pid_instance1.Kd = 0.f;
+//    arm_pid_instance2.Kp = arm_pid_instance1.Kp;
+//    arm_pid_instance2.Ki = arm_pid_instance1.Ki;
+//    arm_pid_instance2.Kd = arm_pid_instance1.Kd;
+//    arm_pid_init_f32(&arm_pid_instance1, 1);
+//    arm_pid_init_f32(&arm_pid_instance2, 1);
+//
+//    arm_fir_init_f32(&arm_fir_instance1, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state1, BLOCK_SIZE);
+//    arm_fir_init_f32(&arm_fir_instance2, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state2, BLOCK_SIZE);
+//    arm_fir_init_f32(&arm_fir_instance3, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state3, BLOCK_SIZE);
+//    arm_fir_init_f32(&arm_fir_instance4, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state4, BLOCK_SIZE);
+//    for (;;) {
+//        static float last_ms;
+//        static float ms;
+//        static vec2 new_ball_p = vec2(0.f);
+//        static vec2 new_ball_v = vec2(0.f);
+//        static vec2 ball_a_sampling = vec2(0.f);
+//        static vec2 new_ball_a = vec2(0.f);
+//        ms = xTaskGetTickCount();
+//        new_ball_p = vec2(0.f);
+//        new_ball_v = vec2(0.f);
+//        ball_a_sampling = vec2(0.f);
+//        new_ball_a = vec2(0.f);
+//
+//        arm_fir_f32(&arm_fir_instance1, &ball_position_sampling.x, &new_ball_p.x, 1);
+//        arm_fir_f32(&arm_fir_instance2, &ball_position_sampling.y, &new_ball_p.y, 1);
+//        if (last_ms != ms) {
+//            new_ball_v = (new_ball_p - ball.position()) * 1000.f / (ms - last_ms);
+//            ball_a_sampling = (new_ball_v - ball.v()) * 1000.f / (ms - last_ms);
+//            //ball_a_sampling = - flat_board.dip_angle() * 9800.f;
+//        }
+//        arm_fir_f32(&arm_fir_instance3, &ball_a_sampling.x, &new_ball_a.x, 1);
+//        arm_fir_f32(&arm_fir_instance4, &ball_a_sampling.y, &new_ball_a.y, 1);
+//
+//        last_ms = ms;
+//        ball.position(new_ball_p);
+//        ball.v(new_ball_v);
+//        ball.a(new_ball_a);
+//        printf("%f,%f,%f,%f,%f;\r\n",ms, ball_position_sampling.x, ball.position().x
+//        , ball.v().x,ball.a().x);
+//
+//        if (is_running) {
+//            vec2 pid_input = ::pid_input(aim_position);
+//            vec2 aim_angle;
+//            aim_angle.x= -arm_pid_f32(&arm_pid_instance1, pid_input.x);
+//            aim_angle.y= -arm_pid_f32(&arm_pid_instance2, pid_input.y);
+//            //printf("aim_v=%f,ball.p=%f,aim_angle=%f\r\n",aim_v,ball.position(),aim_angle);
+//            switch (ball_func) {
+//                case ball_func_to_zero_e:
+//                    aim_angle.x = 0.f;//TODO 测试单向运动
+//                    flat_board.dip_angle(aim_angle);
+//                    flat_board.motor();
+//                    break;
+//            }
+//        }
+//
+//        osDelay(16);//达到60Hz
+//    }
 }
 extern "C" unsigned char uart1_have_data_to_read();
 extern "C" void main_task(const void *) {
+    arm_pid_instance1.Kp = 1.f;
+    arm_pid_instance1.Ki = 0.01f;
+    arm_pid_instance1.Kd = 6.f;
+    arm_pid_instance2.Kp = arm_pid_instance1.Kp;
+    arm_pid_instance2.Ki = arm_pid_instance1.Ki;
+    arm_pid_instance2.Kd = arm_pid_instance1.Kd;
+    arm_pid_init_f32(&arm_pid_instance1,1);
+    arm_pid_init_f32(&arm_pid_instance2,1);
     printf("inited.\r\n");
     for (;;) {
         static char ch[128];
@@ -219,6 +232,16 @@ extern "C" void main_task(const void *) {
         scanf("%s", ch);
         if (strcmp(ch, "ball") == 0) {
             scanf("%f%f", &ball_position_sampling.x,&ball_position_sampling.y);
+            if(is_running) {
+                vec2 out_put = vec2(0.f,0.f);
+                //TODO 先实现一个轴向
+                out_put.x = - arm_pid_f32(&arm_pid_instance1, 200.f - ball_position_sampling.x);
+                out_put.y = arm_pid_f32(&arm_pid_instance2,200.f - ball_position_sampling.y);
+                out_put.x = clamp(out_put.x,-70.f,70.f);
+                out_put.y = clamp(out_put.y,-70.f,70.f);
+                step_motor_couple_t::set_next_steps(out_put,true);
+                step_motor_couple_t::step();
+            }
 //            printf("get data:%f %f\r\n", ball_position_sampling.x,ball_position_sampling.y);
         }
 //        else if (strcmp(ch, "red") == 0) {
