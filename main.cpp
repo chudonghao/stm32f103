@@ -25,6 +25,7 @@ namespace {
     vec2 ball_position_sampling;
     vec2 aim_position = vec2(0.f);
     vec2 aim_position_threshold = vec2(10.f);
+    float pid_kp_typical_vlaue = 3.f;
     float pid_ki_typical_value = 0.003f;
     float pid_kd_typical_value = 60.f;
     float pid_ki_aim_close_typical_value = 0.05f;
@@ -579,7 +580,7 @@ extern "C" void pid_task(const void *) {
 
 extern "C" unsigned char uart1_have_data_to_read();
 extern "C" void main_task(const void *) {
-    arm_pid_instance1.Kp = 3.f;
+    arm_pid_instance1.Kp = pid_kp_typical_vlaue;
     arm_pid_instance1.Ki = pid_ki_typical_value;
     arm_pid_instance1.Kd = pid_kd_typical_value;
     arm_pid_instance2.Kp = arm_pid_instance1.Kp;
