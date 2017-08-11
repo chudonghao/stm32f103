@@ -2,6 +2,7 @@
 #include "fix_glm.h"
 #include <cstdio>
 #include <glm/glm.hpp>
+
 extern "C" {
 #include "lcd.h"
 }
@@ -96,7 +97,7 @@ namespace {
     }
 
     color_type_e color_type_yuv(unsigned char y, unsigned char u, unsigned char v) {
-        if(u < 120 && v<100){
+        if (u < 120 && v < 100) {
             return color_type_green_e;
         }
         if (v >= 150) {
@@ -117,21 +118,23 @@ namespace {
     bool lose_valid_frame = true;
     float x_ball_zero_sampling = 0.f;
 }
-extern "C" u16 * rgb_buffer;
+extern "C" u16 *rgb_buffer;
 extern "C" u8 draw_frame_on_lcd;
-extern "C" void on_frame_got(void) {
+extern "C" void on_frame_got(u8 adjust_base_point) {
     ball_point_on_canvas.restart_record();
-    left_point_on_canvas.restart_record();
-    right_point_on_canvas.restart_record();
-    top_point_on_canvas.restart_record();
-    bottom_point_on_canvas.restart_record();
+    if (adjust_base_point) {
+        left_point_on_canvas.restart_record();
+        right_point_on_canvas.restart_record();
+        top_point_on_canvas.restart_record();
+        bottom_point_on_canvas.restart_record();
+    }
     for (int y = 0; y < 200; ++y) {
-        for (int x = 0; x <200; x+=2) {
+        for (int x = 0; x < 200; x += 2) {
 //          u16 color;
-            u8 y0 = rgb_buffer[y*200+x]&0xff
-            ,y1 = rgb_buffer[y*200+x+1]&0xff
-            ,u = rgb_buffer[y*200+x]>>8
-            ,v = rgb_buffer[y*200+x + 1]>>8;
+            u8 y0 = rgb_buffer[y * 200 + x] & 0xff
+            , y1 = rgb_buffer[y * 200 + x + 1] & 0xff
+            , u = rgb_buffer[y * 200 + x] >> 8
+            , v = rgb_buffer[y * 200 + x + 1] >> 8;
 //                //B = 1.164(Y - 16) + 2.018(U - 128)
 //                //G = 1.164(Y - 16) - 0.813(V - 128) - 0.391(U - 128)
 //                //R = 1.164(Y - 16) + 1.596(V - 128)
@@ -162,22 +165,23 @@ extern "C" void on_frame_got(void) {
 
             switch (color_type_yuv(y0, u, v)) {
                 case color_type_red_e:
-                    ball_point_on_canvas.record(ivec2(x,y));
+                    ball_point_on_canvas.record(ivec2(x, y));
                     break;
                 case color_type_black_e:
                     break;
                 case color_type_green_e:
                     break;
                 case color_type_blue_e:
-                    if(x < 50 && y >=75 && y < 125){
-                        top_point_on_canvas.record(ivec2(x,y));
-                    }else if(x >=75 && x < 125 && y <50){
-                        right_point_on_canvas.record(ivec2(x,y));
-                    }else if(x >=75 && x < 125 && y >= 150){
-                        left_point_on_canvas.record(ivec2(x,y));
-                    }else if(x >= 150 && y >= 75 && y < 125){
-                        bottom_point_on_canvas.record(ivec2(x,y));
-                    }
+                    if (adjust_base_point)
+                        if (x < 50 && y >= 75 && y < 125) {
+                            top_point_on_canvas.record(ivec2(x, y));
+                        } else if (x >= 75 && x < 125 && y < 50) {
+                            right_point_on_canvas.record(ivec2(x, y));
+                        } else if (x >= 75 && x < 125 && y >= 150) {
+                            left_point_on_canvas.record(ivec2(x, y));
+                        } else if (x >= 150 && y >= 75 && y < 125) {
+                            bottom_point_on_canvas.record(ivec2(x, y));
+                        }
                     break;
                 case color_type_bright_e:
                     break;
@@ -185,22 +189,23 @@ extern "C" void on_frame_got(void) {
             }
             switch (color_type_yuv(y1, u, v)) {
                 case color_type_red_e:
-                    ball_point_on_canvas.record(ivec2(x+1,y));
+                    ball_point_on_canvas.record(ivec2(x + 1, y));
                     break;
                 case color_type_black_e:
                     break;
                 case color_type_green_e:
                     break;
                 case color_type_blue_e:
-                    if(x + 1 < 50 && y >=75 && y < 125){
-                        top_point_on_canvas.record(ivec2(x+1,y));
-                    }else if(x + 1 >=75 && x + 1 < 125 && y <50){
-                        right_point_on_canvas.record(ivec2(x+1,y));
-                    }else if(x + 1 >=75 && x + 1 < 125 && y >= 150){
-                        left_point_on_canvas.record(ivec2(x+1,y));
-                    }else if(x + 1 >= 150 && y >= 75 && y < 125){
-                        bottom_point_on_canvas.record(ivec2(x+1,y));
-                    }
+                    if (adjust_base_point)
+                        if (x + 1 < 50 && y >= 75 && y < 125) {
+                            top_point_on_canvas.record(ivec2(x + 1, y));
+                        } else if (x + 1 >= 75 && x + 1 < 125 && y < 50) {
+                            right_point_on_canvas.record(ivec2(x + 1, y));
+                        } else if (x + 1 >= 75 && x + 1 < 125 && y >= 150) {
+                            left_point_on_canvas.record(ivec2(x + 1, y));
+                        } else if (x + 1 >= 150 && y >= 75 && y < 125) {
+                            bottom_point_on_canvas.record(ivec2(x + 1, y));
+                        }
                     break;
                 case color_type_bright_e:
                     break;
@@ -214,9 +219,9 @@ extern "C" void on_frame_got(void) {
     vec2 bottom = bottom_point_on_canvas.get_position();
     vec2 left = left_point_on_canvas.get_position();
     vec2 right = right_point_on_canvas.get_position();
-    if(top.x > 0 && top.y > 0 && bottom.x > 0 && bottom.y > 0
-            && left.x > 0 && left.y > 0 && right.x > 0 && right.y > 0){
-        if(ball.x>0&&ball.y>0){
+    if (top.x > 0 && top.y > 0 && bottom.x > 0 && bottom.y > 0
+        && left.x > 0 && left.y > 0 && right.x > 0 && right.y > 0) {
+        if (ball.x > 0 && ball.y > 0) {
             vec2 vec_top_bottom = top - bottom;
             vec2 vec_right_left = right - left;
             float top_bottom_pixel = length(vec_top_bottom);
@@ -235,60 +240,69 @@ extern "C" void on_frame_got(void) {
             ball_x = 620.0f / right_left_pixel * ball_x_pixel;
             ball_y = 620.0f / top_bottom_pixel * ball_y_pixel;
 
-            printf("ball %.3f %.3f\r\n",ball_x,ball_y);
+            printf("ball %.3f %.3f\r\n", ball_x, ball_y);
         }
     }
 
     static char msg[30];
-    if(draw_frame_on_lcd){
-        sprintf(msg,"ball=(%f,%f)",ball.x,ball.y);
-        LCD_ShowString(0,216,200,300,16,(u8*)msg);
-        LCD_Set_Window(200,0,200,200);
-        LCD_WriteRAM_Prepare();		//开始写入GRAM
+    if (draw_frame_on_lcd) {
+        sprintf(msg, "ball=(%.3f,%.3f)", ball.x, ball.y);
+        LCD_ShowString(0, 216, 200, 300, 16, (u8 *) msg);
+        sprintf(msg, "top=(%.3f,%.3f)", top.x, top.y);
+        LCD_ShowString(0, 232, 200, 300, 16, (u8 *) msg);
+        sprintf(msg, "bottom=(%.3f,%.3f)", bottom.x, bottom.y);
+        LCD_ShowString(0, 248, 200, 300, 16, (u8 *) msg);
+        sprintf(msg, "left=(%.3f,%.3f)", left.x, left.y);
+        LCD_ShowString(0, 264, 200, 300, 16, (u8 *) msg);
+        sprintf(msg, "right=(%.3f,%.3f)", right.x, right.y);
+        LCD_ShowString(0, 280, 200, 300, 16, (u8 *) msg);
+
+        LCD_Set_Window(200, 0, 200, 200);
+        LCD_WriteRAM_Prepare();        //开始写入GRAM
         for (int y = 0; y < 200; ++y) {
-            for (int x = 0; x <200; x+=2) {
-                u8 y0 = rgb_buffer[y*200+x]&0xff
-                ,y1 = rgb_buffer[y*200+x+1]&0xff
-                ,u = rgb_buffer[y*200+x]>>8
-                ,v = rgb_buffer[y*200+x + 1]>>8;
+            for (int x = 0; x < 200; x += 2) {
+                u8 y0 = rgb_buffer[y * 200 + x] & 0xff
+                , y1 = rgb_buffer[y * 200 + x + 1] & 0xff
+                , u = rgb_buffer[y * 200 + x] >> 8
+                , v = rgb_buffer[y * 200 + x + 1] >> 8;
 
                 switch (color_type_yuv(y0, u, v)) {
-                case color_type_red_e:
-                    LCD->LCD_RAM = RED;
-                    break;
-                case color_type_black_e:
-                    LCD->LCD_RAM = BLACK;
-                    break;
-                case color_type_green_e:
-                    LCD->LCD_RAM = GREEN;
-                    break;
-                case color_type_blue_e:
-                    LCD->LCD_RAM = BLUE;
-                    break;
-                case color_type_bright_e:
-                    LCD->LCD_RAM = WHITE;
-                    break;
-                default:
-                    LCD->LCD_RAM = GRAY;
+                    case color_type_red_e:
+                        LCD->LCD_RAM = RED;
+                        break;
+                    case color_type_black_e:
+                        LCD->LCD_RAM = BLACK;
+                        break;
+                    case color_type_green_e:
+                        LCD->LCD_RAM = GREEN;
+                        break;
+                    case color_type_blue_e:
+                        LCD->LCD_RAM = BLUE;
+                        break;
+                    case color_type_bright_e:
+                        LCD->LCD_RAM = WHITE;
+                        break;
+                    default:
+                        LCD->LCD_RAM = GRAY;
                 }
                 switch (color_type_yuv(y1, u, v)) {
-                case color_type_red_e:
-                    LCD->LCD_RAM = RED;
-                    break;
-                case color_type_black_e:
-                    LCD->LCD_RAM = BLACK;
-                    break;
-                case color_type_green_e:
-                    LCD->LCD_RAM = GREEN;
-                    break;
-                case color_type_blue_e:
-                    LCD->LCD_RAM = BLUE;
-                    break;
-                case color_type_bright_e:
-                    LCD->LCD_RAM = WHITE;
-                    break;
-                default:
-                    LCD->LCD_RAM = GRAY;
+                    case color_type_red_e:
+                        LCD->LCD_RAM = RED;
+                        break;
+                    case color_type_black_e:
+                        LCD->LCD_RAM = BLACK;
+                        break;
+                    case color_type_green_e:
+                        LCD->LCD_RAM = GREEN;
+                        break;
+                    case color_type_blue_e:
+                        LCD->LCD_RAM = BLUE;
+                        break;
+                    case color_type_bright_e:
+                        LCD->LCD_RAM = WHITE;
+                        break;
+                    default:
+                        LCD->LCD_RAM = GRAY;
                 }
             }
         }

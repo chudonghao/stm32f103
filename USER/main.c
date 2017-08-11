@@ -22,7 +22,7 @@ __align(4) u16 rgb_buf[200*200 + 16];
 u16 * rgb_buffer = &rgb_buf[16];
 u8 frame_state = 0;
 u8 draw_frame_on_lcd;
-void on_frame_got(void);
+void on_frame_got(u8 adjust_base_point);
 										//0,数据没有采集完;
 										//1,数据采集完了,但是还没处理;
 										//2,数据已经处理完成了,可以开始下一帧接收
@@ -117,7 +117,7 @@ void rgb565_test(void)
         if(frame_state == 1){
 
             memcpy(&rgb_buffer[200*200 - 16],&rgb_buf[0],16*2);
-            on_frame_got();
+            on_frame_got(draw_frame_on_lcd);
             if(draw_frame_on_lcd){
                 LCD_Set_Window(0,0,200,200);
                 LCD_WriteRAM_Prepare();		//开始写入GRAM
