@@ -23,7 +23,12 @@ namespace {
     ball_t ball;
     vec2 ball_position_sampling;
     vec2 aim_position = vec2(0.f);
-    vec2 aim_position_threshold = vec2(13.f);
+    vec2 aim_position_threshold = vec2(10.f);
+    float pid_ki_typical_value = 0.01f;
+    float pid_kd_typical_value = 60.f;
+    float pid_ki_aim_close_typical_value = 0.1f;
+    float pid_kd_aim_close_typical_value = 60.f;
+
     arm_pid_instance_f32 arm_pid_instance1;
     arm_pid_instance_f32 arm_pid_instance2;
     arm_fir_instance_f32 arm_fir_instance1;
@@ -37,10 +42,35 @@ namespace {
 //    arm_fir_instance_f32 arm_fir_instance3;
 //    float arm_fir_state3[TAP_SIZE+BLOCK_SIZE-1];
     enum ball_func_e {
-        ball_func_to_zero_e = 1,
+        ball_func_to_2_e = 1,
+        ball_func_1_5_e,
+        ball_func_1_4_5_e,
+        ball_func_1_9_e,
+        ball_func_1_2_6_9_e,
     };
     ball_func_e ball_func;
     bool is_running = false;
+    const static vec2 POINT_1 = vec2(-200.f, 200.f);
+    const static vec2 POINT_2 = vec2(0.f, 200.f);
+    const static vec2 POINT_3 = vec2(200.f, 200.f);
+    const static vec2 POINT_4 = vec2(-200.f, 0.f);
+    const static vec2 POINT_5 = vec2(0.f, 0.f);
+    const static vec2 POINT_6 = vec2(200.f, 0.f);
+    const static vec2 POINT_7 = vec2(-200.f, -200.f);
+    const static vec2 POINT_8 = vec2(0.f, -200.f);
+    const static vec2 POINT_9 = vec2(200.f, -200.f);
+    const static vec2 POINT_10 = vec2(-200.f, 100.f);
+    const static vec2 POINT_11 = vec2(0.f, 100.f);
+    const static vec2 POINT_12 = vec2(200.f, 100.f);
+    const static vec2 POINT_13 = vec2(-200.f, -100.f);
+    const static vec2 POINT_14 = vec2(0.f, -100.f);
+    const static vec2 POINT_15 = vec2(200.f, -100.f);
+    const static vec2 POINT_16 = vec2(-100.f, 200.f);
+    const static vec2 POINT_17 = vec2(-100.f, 0.f);
+    const static vec2 POINT_18 = vec2(-100.f, -200.f);
+    const static vec2 POINT_19 = vec2(100.f, 200.f);
+    const static vec2 POINT_20 = vec2(100.f, 0.f);
+    const static vec2 POINT_21 = vec2(100.f, -200.f);
 }
 extern "C" void key_board_task(const void *) {
     static int old_key = -1;
@@ -83,164 +113,227 @@ extern "C" void key_board_task(const void *) {
             step_motor_couple_t::set_next_steps(cur);
             step_motor_couple_t::step();
         } else if (key == 8) {
-            ball_func = ball_func_to_zero_e;
+            ball_func = ball_func_to_2_e;
+            aim_position = POINT_2;
+            aim_position_threshold = vec2(10.f);
+            is_running = true;
+        } else if (key == 9) {
+            ball_func = ball_func_1_5_e;
+            aim_position = POINT_5;
+            aim_position_threshold = vec2(10.f);
+            is_running = true;
+        } else if (key == 10) {
+            ball_func = ball_func_1_4_5_e;
+            aim_position = POINT_4;
+            aim_position_threshold = vec2(10.f);
+            is_running = true;
+        } else if(key == 11){
+            ball_func = ball_func_1_9_e;
+            aim_position = POINT_17;
+            aim_position_threshold = vec2(30.f);
+            is_running = true;
+        } else if(key == 12){
+            ball_func = ball_func_1_2_6_9_e;
+            aim_position = POINT_2;
+            aim_position_threshold = vec2(10.f);
             is_running = true;
         }
         osDelay(10);
     }
 }
 
-static inline vec2 compute_aim_v(vec2 diff_p) {
-    int sign_diff_p;
-    float abs_diff_p;
-    vec2 res = vec2(0.f);
-    if (diff_p.x < 0) {
-        abs_diff_p = -diff_p.x;
-        sign_diff_p = -1;
-    } else {
-        abs_diff_p = diff_p.x;
-        sign_diff_p = 1;
+void refresh_ball_state() {
+    static float last_ms = 0.f;
+    static float ms;
+    ms = osKernelSysTick();
+    if (ms != last_ms) {
+        vec2 v;
+        v.x = (ball_position_sampling.x - ball.position().x) * 1000.f / (ms - last_ms);
+        v.y = (ball_position_sampling.y - ball.position().y) * 1000.f / (ms - last_ms);
+        ball.position(ball_position_sampling);
+        ball.v(v);
     }
-    if (abs_diff_p< aim_position_threshold.x) {
-        res.x = 0.f;
-    }else{
-        res.x = (abs_diff_p + 10.f) * 0.5f * sign_diff_p;
-    }
-    if (diff_p.y < 0) {
-        abs_diff_p = -diff_p.y;
-        sign_diff_p = -1;
-    } else {
-        abs_diff_p = diff_p.y;
-        sign_diff_p = 1;
-    }
-    if (abs_diff_p< aim_position_threshold.y) {
-        res.y = 0.f;
-    }else{
-        res.y = (abs_diff_p + 10.f) * 0.5f * sign_diff_p;
-    }
-    return res;
+    last_ms = ms;
 }
-const static float max_a = 200.f;
-static inline vec2 compute_aim_a(vec2 diff_v){
-    vec2 aim_a = vec2(0.f);
-    if (diff_v.x >= 70.f) {
-        aim_a.x = max_a;
-    } else if (diff_v.x < -70.f) {
-        aim_a.x = -max_a;
-    } else {
-        aim_a.x = (diff_v.x) * max_a / 70.f;
+
+void refresh_pid_arg(){
+//    //根据距离的Kd
+//    vec2 dynamic_Kd = /*diff_p / 6.f*/(aim_position - ball_position_sampling) / 200.f * pid_kd_typical_value;
+//    //abs
+//    if (dynamic_Kd.x < 0.f)
+//        dynamic_Kd.x = -dynamic_Kd.x;
+//    if (dynamic_Kd.y < 0.f)
+//        dynamic_Kd.y = -dynamic_Kd.y;
+//    //Kd不能太小
+//    //使pid参数修改生效
+//    if (dynamic_Kd.x >= pid_kd_typical_value) {
+//        arm_pid_instance1.Kd = dynamic_Kd.x;
+//        arm_pid_init_f32(&arm_pid_instance1, 0);
+//    }
+//    if (dynamic_Kd.y >= pid_kd_typical_value) {
+//        arm_pid_instance2.Kd = dynamic_Kd.y;
+//        arm_pid_init_f32(&arm_pid_instance2, 0);
+//    }
+    vec2 diff_p = aim_position - ball.position();
+    if(abs(diff_p.x) < 70.f){
+        arm_pid_instance1.Ki = pid_ki_aim_close_typical_value;
+        arm_pid_instance1.Kd = pid_kd_aim_close_typical_value;
+        arm_pid_init_f32(&arm_pid_instance1,0);
+    }else{
+        arm_pid_instance1.Ki = pid_ki_typical_value;
+        arm_pid_instance1.Kd = pid_kd_typical_value;
+        arm_pid_init_f32(&arm_pid_instance1,0);
     }
-    if (diff_v.y >= 70.f) {
-        aim_a.y = max_a;
-    } else if (diff_v.y < -70.f) {
-        aim_a.y = -max_a;
-    } else {
-        aim_a.y = (diff_v.y) * max_a / 70.f;
+    if(abs(diff_p.y) < 70.f){
+        arm_pid_instance2.Ki = pid_ki_aim_close_typical_value;
+        arm_pid_instance2.Kd = pid_kd_aim_close_typical_value;
+        arm_pid_init_f32(&arm_pid_instance2,0);
+    }else{
+        arm_pid_instance2.Ki = pid_ki_typical_value;
+        arm_pid_instance2.Kd = pid_kd_typical_value;
+        arm_pid_init_f32(&arm_pid_instance2,0);
     }
-    return aim_a;
 }
-static inline ivec2 pid_input(vec2 except_position) {
-    vec2 diff_p = except_position - ball.position();
-    vec2 diff_v;
-    vec2 aim_a;
-    vec2 pid_input;
-    diff_v = compute_aim_v(diff_p) - ball.v();
-    aim_a = compute_aim_a(diff_v) - ball.a();
-    pid_input = aim_a - ball.a();
-    return pid_input;
+
+void common_ball_move_func() {
+    refresh_pid_arg();
+    //进入pid调节
+    vec2 out_put = vec2(0.f, 0.f);
+    out_put.x = -arm_pid_f32(&arm_pid_instance1, aim_position.x - ball_position_sampling.x);
+    out_put.y = arm_pid_f32(&arm_pid_instance2, aim_position.y - ball_position_sampling.y);
+    //限幅
+    out_put.x = clamp(out_put.x, -90.f, 90.f);
+    out_put.y = clamp(out_put.y, -90.f, 90.f);
+    //强制电机向指定步数运动
+    step_motor_couple_t::set_next_steps(out_put, true);
+    step_motor_couple_t::step();
+    printf("%.3f,%.3f;\r\n", ball_position_sampling.x, ball_position_sampling.y);
+}
+
+void ball_func_1_to_5() {
+    if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
+        && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
+        if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {
+            flat_board.dip_angle(vec2(0.f));
+            flat_board.motor();
+            is_running = false;
+            return;
+        }
+    }
+    common_ball_move_func();
+}
+
+void ball_func_to_2() {
+    if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
+        && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
+        if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {
+            flat_board.dip_angle(vec2(0.f));
+            flat_board.motor();
+            is_running = false;
+            return;
+        }
+    }
+    common_ball_move_func();
+}
+
+void ball_func_1_4_5() {
+    if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
+        && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
+        if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {
+            flat_board.dip_angle(vec2(0.f));
+            flat_board.motor();
+            if (aim_position == POINT_4) {
+                aim_position = POINT_5;
+                osDelay(1800);
+            } else {
+                is_running = false;
+                return;
+            }
+        }
+    }
+    common_ball_move_func();
+}
+
+void ball_func_1_9(){
+    if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
+        && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
+        if(aim_position == POINT_17){//抵达中间点
+            aim_position = POINT_9;
+            aim_position_threshold = vec2(10.f);
+        }else if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {//抵达9
+            flat_board.dip_angle(vec2(0.f));
+            flat_board.motor();
+            is_running = false;
+            return;
+        }
+    }
+    common_ball_move_func();
+}
+
+void ball_func_1_2_6_9(){
+    if (abs(ball_position_sampling.x - aim_position.x) < aim_position_threshold.x
+        && abs(ball_position_sampling.y - aim_position.y) < aim_position_threshold.y) {
+        if(aim_position == POINT_2){//抵达中间点
+            aim_position = POINT_6;
+            aim_position_threshold = vec2(10.f);
+        }else if(aim_position == POINT_6){
+            aim_position = POINT_9;
+            aim_position_threshold = vec2(10.f);
+        }else if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {//抵达9
+            flat_board.dip_angle(vec2(0.f));
+            flat_board.motor();
+            is_running = false;
+            return;
+        }
+    }
+    common_ball_move_func();
 }
 
 extern "C" void pid_task(const void *) {
     osThreadTerminate(osThreadGetId());
-//    arm_pid_instance1.Kp = 1.f / 9800.f;
-//    arm_pid_instance1.Ki = 0.f;
-//    arm_pid_instance1.Kd = 0.f;
-//    arm_pid_instance2.Kp = arm_pid_instance1.Kp;
-//    arm_pid_instance2.Ki = arm_pid_instance1.Ki;
-//    arm_pid_instance2.Kd = arm_pid_instance1.Kd;
-//    arm_pid_init_f32(&arm_pid_instance1, 1);
-//    arm_pid_init_f32(&arm_pid_instance2, 1);
-//
-//    arm_fir_init_f32(&arm_fir_instance1, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state1, BLOCK_SIZE);
-//    arm_fir_init_f32(&arm_fir_instance2, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state2, BLOCK_SIZE);
-//    arm_fir_init_f32(&arm_fir_instance3, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state3, BLOCK_SIZE);
-//    arm_fir_init_f32(&arm_fir_instance4, TAP20_FS60_FC1_SIZE, TAP20_FS60_FC1, arm_fir_state4, BLOCK_SIZE);
-//    for (;;) {
-//        static float last_ms;
-//        static float ms;
-//        static vec2 new_ball_p = vec2(0.f);
-//        static vec2 new_ball_v = vec2(0.f);
-//        static vec2 ball_a_sampling = vec2(0.f);
-//        static vec2 new_ball_a = vec2(0.f);
-//        ms = xTaskGetTickCount();
-//        new_ball_p = vec2(0.f);
-//        new_ball_v = vec2(0.f);
-//        ball_a_sampling = vec2(0.f);
-//        new_ball_a = vec2(0.f);
-//
-//        arm_fir_f32(&arm_fir_instance1, &ball_position_sampling.x, &new_ball_p.x, 1);
-//        arm_fir_f32(&arm_fir_instance2, &ball_position_sampling.y, &new_ball_p.y, 1);
-//        if (last_ms != ms) {
-//            new_ball_v = (new_ball_p - ball.position()) * 1000.f / (ms - last_ms);
-//            ball_a_sampling = (new_ball_v - ball.v()) * 1000.f / (ms - last_ms);
-//            //ball_a_sampling = - flat_board.dip_angle() * 9800.f;
-//        }
-//        arm_fir_f32(&arm_fir_instance3, &ball_a_sampling.x, &new_ball_a.x, 1);
-//        arm_fir_f32(&arm_fir_instance4, &ball_a_sampling.y, &new_ball_a.y, 1);
-//
-//        last_ms = ms;
-//        ball.position(new_ball_p);
-//        ball.v(new_ball_v);
-//        ball.a(new_ball_a);
-//        printf("%f,%f,%f,%f,%f;\r\n",ms, ball_position_sampling.x, ball.position().x
-//        , ball.v().x,ball.a().x);
-//
-//        if (is_running) {
-//            vec2 pid_input = ::pid_input(aim_position);
-//            vec2 aim_angle;
-//            aim_angle.x= -arm_pid_f32(&arm_pid_instance1, pid_input.x);
-//            aim_angle.y= -arm_pid_f32(&arm_pid_instance2, pid_input.y);
-//            //printf("aim_v=%f,ball.p=%f,aim_angle=%f\r\n",aim_v,ball.position(),aim_angle);
-//            switch (ball_func) {
-//                case ball_func_to_zero_e:
-//                    aim_angle.x = 0.f;//TODO 测试单向运动
-//                    flat_board.dip_angle(aim_angle);
-//                    flat_board.motor();
-//                    break;
-//            }
-//        }
-//
-//        osDelay(16);//达到60Hz
-//    }
 }
+
 extern "C" unsigned char uart1_have_data_to_read();
 extern "C" void main_task(const void *) {
-    arm_pid_instance1.Kp = 1.f;
-    arm_pid_instance1.Ki = 0.01f;
-    arm_pid_instance1.Kd = 6.f;
+    arm_pid_instance1.Kp = 3.f;
+    arm_pid_instance1.Ki = pid_ki_typical_value;
+    arm_pid_instance1.Kd = pid_kd_typical_value;
     arm_pid_instance2.Kp = arm_pid_instance1.Kp;
     arm_pid_instance2.Ki = arm_pid_instance1.Ki;
     arm_pid_instance2.Kd = arm_pid_instance1.Kd;
-    arm_pid_init_f32(&arm_pid_instance1,1);
-    arm_pid_init_f32(&arm_pid_instance2,1);
+    arm_pid_init_f32(&arm_pid_instance1, 1);
+    arm_pid_init_f32(&arm_pid_instance2, 1);
     printf("inited.\r\n");
     for (;;) {
         static char ch[128];
-        if(!uart1_have_data_to_read()){
+        if (!uart1_have_data_to_read()) {
             osThreadYield();
         }
         scanf("%s", ch);
         if (strcmp(ch, "ball") == 0) {
-            scanf("%f%f", &ball_position_sampling.x,&ball_position_sampling.y);
-            if(is_running) {
-                vec2 out_put = vec2(0.f,0.f);
-                //TODO 先实现一个轴向
-                out_put.x = - arm_pid_f32(&arm_pid_instance1, 200.f - ball_position_sampling.x);
-                out_put.y = arm_pid_f32(&arm_pid_instance2,200.f - ball_position_sampling.y);
-                out_put.x = clamp(out_put.x,-70.f,70.f);
-                out_put.y = clamp(out_put.y,-70.f,70.f);
-                step_motor_couple_t::set_next_steps(out_put,true);
-                step_motor_couple_t::step();
+            int scanf_res = scanf("%f%f", &ball_position_sampling.x, &ball_position_sampling.y);
+            if (scanf_res != 2) {
+                continue;
+            }
+            refresh_ball_state();
+            if (is_running) {
+                switch (ball_func) {
+                    case ball_func_1_5_e:
+                        ball_func_1_to_5();
+                        break;
+                    case ball_func_to_2_e:
+                        ball_func_to_2();
+                        break;
+                    case ball_func_1_4_5_e:
+                        ball_func_1_4_5();
+                        break;
+                    case ball_func_1_9_e:
+                        ball_func_1_9();
+                        break;
+                    case ball_func_1_2_6_9_e:
+                        ball_func_1_2_6_9();
+                        break;
+                }
             }
 //            printf("get data:%f %f\r\n", ball_position_sampling.x,ball_position_sampling.y);
         }

@@ -12,7 +12,7 @@
 
 using namespace glm;
 namespace {
-    const static int step_per_loop = 400;
+    const static int step_per_loop = 800;
     const static float r = 10.f;
     const static float pi = 3.141592653f;
     ivec2 current_steps;
