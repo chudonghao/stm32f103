@@ -173,13 +173,13 @@ extern "C" void on_frame_got(u8 adjust_base_point) {
                     break;
                 case color_type_blue_e:
                     if (adjust_base_point)
-                        if (x < 50 && y >= 75 && y < 125) {
+                        if (x >=25 && x < 75 && y >= 75 && y < 125) {
                             top_point_on_canvas.record(ivec2(x, y));
-                        } else if (x >= 75 && x < 125 && y < 50) {
+                        } else if (x >= 75 && x < 125 && y >= 25 && y < 75) {
                             right_point_on_canvas.record(ivec2(x, y));
-                        } else if (x >= 75 && x < 125 && y >= 150) {
+                        } else if (x >= 75 && x < 125 && y < 175 && y >= 125) {
                             left_point_on_canvas.record(ivec2(x, y));
-                        } else if (x >= 150 && y >= 75 && y < 125) {
+                        } else if (x < 175 && x >= 125 && y >= 75 && y < 125) {
                             bottom_point_on_canvas.record(ivec2(x, y));
                         }
                     break;
@@ -197,13 +197,13 @@ extern "C" void on_frame_got(u8 adjust_base_point) {
                     break;
                 case color_type_blue_e:
                     if (adjust_base_point)
-                        if (x + 1 < 50 && y >= 75 && y < 125) {
+                        if (x + 1 >=25 && x + 1 < 75 && y >= 75 && y < 125) {
                             top_point_on_canvas.record(ivec2(x + 1, y));
-                        } else if (x + 1 >= 75 && x + 1 < 125 && y < 50) {
+                        } else if (x + 1 >= 75 && x + 1 < 125 && y >= 25 && y < 75) {
                             right_point_on_canvas.record(ivec2(x + 1, y));
-                        } else if (x + 1 >= 75 && x + 1 < 125 && y >= 150) {
+                        } else if (x + 1 >= 75 && x + 1 < 125 && y < 175 && y >= 125) {
                             left_point_on_canvas.record(ivec2(x + 1, y));
-                        } else if (x + 1 >= 150 && y >= 75 && y < 125) {
+                        } else if (x + 1 < 175 && x + 1 >= 125 && y >= 75 && y < 125) {
                             bottom_point_on_canvas.record(ivec2(x + 1, y));
                         }
                     break;
@@ -237,8 +237,8 @@ extern "C" void on_frame_got(u8 adjust_base_point) {
             ball_x_pixel = vec_cross_z / top_bottom_pixel;
             vec_cross_z = vec_right_left.x * vec_ball_left.y - vec_right_left.y * vec_ball_left.x;
             ball_y_pixel = vec_cross_z / right_left_pixel;
-            ball_x = 620.0f / right_left_pixel * ball_x_pixel;
-            ball_y = 620.0f / top_bottom_pixel * ball_y_pixel;
+            ball_x = 400.0f / right_left_pixel * ball_x_pixel;
+            ball_y = 400.0f / top_bottom_pixel * ball_y_pixel;
 
             printf("ball %.3f %.3f\r\n", ball_x, ball_y);
         }
