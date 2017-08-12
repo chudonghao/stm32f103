@@ -372,13 +372,13 @@ namespace {
         if (aim_position == POINT_9) {//抵达终点
             aim_position_type = aim_position_type_none_e;
         } else if (aim_position == POINT_4) {//从起点出发
-            arm_pid_reset_f32(&arm_pid_instance1);
-            arm_pid_reset_f32(&arm_pid_instance2);
+//            arm_pid_reset_f32(&arm_pid_instance1);
+//            arm_pid_reset_f32(&arm_pid_instance2);
             aim_position = POINT_14;
             aim_position_type = aim_position_type_pass_e;
         } else if (aim_position == POINT_14) {//圆上第一个点
-            arm_pid_reset_f32(&arm_pid_instance1);
-            arm_pid_reset_f32(&arm_pid_instance2);
+//            arm_pid_reset_f32(&arm_pid_instance1);
+//            arm_pid_reset_f32(&arm_pid_instance2);
             if (ball_func_circle_state == 3) {//三圈完成
                 ball_func_circle_state = 0;
                 aim_position = POINT_9;
@@ -387,16 +387,16 @@ namespace {
                 aim_position = POINT_20;
             }
         } else if (aim_position == POINT_20) {//圆上第二个点
-            arm_pid_reset_f32(&arm_pid_instance1);
-            arm_pid_reset_f32(&arm_pid_instance2);
+//            arm_pid_reset_f32(&arm_pid_instance1);
+//            arm_pid_reset_f32(&arm_pid_instance2);
             aim_position = POINT_11;
         } else if (aim_position == POINT_11) {//圆上第三个点
-            arm_pid_reset_f32(&arm_pid_instance1);
-            arm_pid_reset_f32(&arm_pid_instance2);
+//            arm_pid_reset_f32(&arm_pid_instance1);
+//            arm_pid_reset_f32(&arm_pid_instance2);
             aim_position = POINT_17;
         } else if (aim_position == POINT_17) {//圆上第四个点
-            arm_pid_reset_f32(&arm_pid_instance1);
-            arm_pid_reset_f32(&arm_pid_instance2);
+//            arm_pid_reset_f32(&arm_pid_instance1);
+//            arm_pid_reset_f32(&arm_pid_instance2);
             ++ball_func_circle_state;
             aim_position = POINT_14;
         }
