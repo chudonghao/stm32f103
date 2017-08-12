@@ -10,6 +10,7 @@
 #include "ov2640.h"
 #include "dcmi.h"
 #include "ov2640cfg.h"
+#include "beep.h"
 #include <string.h>
 //ALIENTEK 探索者STM32F407开发板 实验35
 //摄像头 实验 -库函数版本
@@ -114,6 +115,16 @@ void rgb565_test(void)
 			DCMI_Start();//重新开始传输
 		} 
 		
+        if(USART_RX_STA & 0x8000){
+            int len = USART_RX_STA & 0x3fff;
+            USART_RX_BUF[len] = 0;
+            if(strcmp("hint",(char*)USART_RX_BUF) == 0){
+                BEEP = 1;
+            }else if(strcmp("stop",(char*)USART_RX_BUF) == 0){
+                BEEP = 0;
+            }
+            USART_RX_STA = 0;
+        }
         if(frame_state == 1){
 
             memcpy(&rgb_buffer[200*200 - 16],&rgb_buf[0],16*2);
@@ -144,6 +155,7 @@ int main(void)
 	usart2_init(42,115200);		//初始化串口2波特率为115200
 	LED_Init();					//初始化LED 
  	LCD_Init();					//LCD初始化
+    BEEP_Init();
     //LCD_Display_Dir(1);
  	KEY_Init();					//按键初始化 
 	//TIM3_Int_Init(10000-1,8400-1);//10Khz计数,1秒钟中断一次

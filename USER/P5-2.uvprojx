@@ -365,7 +365,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\HARDWARE\LED;..\HARDWARE\LCD;..\HARDWARE\KEY;..\HARDWARE\DCMI;..\HARDWARE\OV2640;..\HARDWARE\TIMER;..\HARDWARE\USART2;..\FWLIB\inc;..\USMART;..\third_party\glm</IncludePath>
+              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\HARDWARE\LED;..\HARDWARE\LCD;..\HARDWARE\KEY;..\HARDWARE\DCMI;..\HARDWARE\OV2640;..\HARDWARE\TIMER;..\HARDWARE\USART2;..\FWLIB\inc;..\USMART;..\third_party\glm;..\HARDWARE\BEEP</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -427,6 +427,16 @@
               <FileName>main.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\main.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>beep.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\BEEP\beep.c</FilePath>
+            </File>
+            <File>
+              <FileName>beep.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\BEEP\beep.h</FilePath>
             </File>
           </Files>
         </Group>
