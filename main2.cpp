@@ -21,17 +21,26 @@ using namespace cdh;
 using namespace std;
 using namespace glm;
 namespace {
+    enum aim_position_type_e {
+        aim_position_type_stop_2_second_e,
+        aim_position_type_enter_e,
+        aim_position_type_pass_e,
+        aim_position_type_none_e
+    };
     const int BLOCK_SIZE = 20;
     flat_board_t flat_board;
     ball_t ball;
     vec2 ball_position_sampling;
+    int ball_position_sampling_index;
     vec2 aim_position = vec2(0.f);
-    vec2 aim_position_threshold = vec2(10.f);
-    float pid_kp_typical_vlaue = 3.f;
-    float pid_ki_typical_value = 0.003f;
-    float pid_kd_typical_value = 60.f;
-    float pid_ki_aim_close_typical_value = 0.05f;
-    float pid_kd_aim_close_typical_value = 60.f;
+    aim_position_type_e aim_position_type;
+    vec2 aim_position_stop_threshold = vec2(12.f);
+    vec2 aim_position_enter_threshold = vec2(15.f);
+    vec2 aim_position_pass_threshold = vec2(30.f);
+
+    float pid_kp_typical_vlaue = 1.f;
+    float pid_ki_typical_value = 0.01f;
+    float pid_kd_typical_value = 24.f;
 
     arm_pid_instance_f32 arm_pid_instance1;
     arm_pid_instance_f32 arm_pid_instance2;
@@ -56,7 +65,6 @@ namespace {
 
     };
     ball_func_e ball_func;
-    bool is_running = false;
     bool keep_running = false;
     bool get_point_a_b_c_d = false;
     int ball_func_a_b_c_d_state_index = 0;
@@ -99,8 +107,8 @@ namespace {
     }
 
     bool common_stop_condition_satisfied() {
-        if (abs(ball_position_sampling.x - aim_position.x) < 10.f
-            && abs(ball_position_sampling.y - aim_position.y) < 10.f) {
+        if (abs(ball_position_sampling.x - aim_position.x) < aim_position_stop_threshold.x
+            && abs(ball_position_sampling.y - aim_position.y) < aim_position_stop_threshold.y) {
             if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {
                 return true;
             }
@@ -109,156 +117,117 @@ namespace {
     }
 
     bool common_enter_condition_satisfied() {
-        if (abs(ball_position_sampling.x - aim_position.x) < 12.f
-            && abs(ball_position_sampling.y - aim_position.y) < 12.f) {
+        if (abs(ball_position_sampling.x - aim_position.x) < aim_position_enter_threshold.x
+            && abs(ball_position_sampling.y - aim_position.y) < aim_position_enter_threshold.y) {
             return true;
         }
         return false;
     }
 
     bool common_pass_condition_satisfied() {
-        if (abs(ball_position_sampling.x - aim_position.x) < 30.f
-            && abs(ball_position_sampling.y - aim_position.y) < 30.f) {
+        if (abs(ball_position_sampling.x - aim_position.x) < aim_position_pass_threshold.x
+            && abs(ball_position_sampling.y - aim_position.y) < aim_position_pass_threshold.y) {
             return true;
         }
         return false;
     }
 
-    void refresh_pid_arg() {
-//    //∏˘æ›æ‡¿ÎµƒKd
-//    vec2 dynamic_Kd = /*diff_p / 6.f*/(aim_position - ball_position_sampling) / 200.f * pid_kd_typical_value;
-//    //abs
-//    if (dynamic_Kd.x < 0.f)
-//        dynamic_Kd.x = -dynamic_Kd.x;
-//    if (dynamic_Kd.y < 0.f)
-//        dynamic_Kd.y = -dynamic_Kd.y;
-//    //Kd≤ªƒ‹Ã´–°
-//    // πpid≤Œ ˝–ﬁ∏ƒ…˙–ß
-//    if (dynamic_Kd.x >= pid_kd_typical_value) {
-//        arm_pid_instance1.Kd = dynamic_Kd.x;
-//        arm_pid_init_f32(&arm_pid_instance1, 0);
-//    }
-//    if (dynamic_Kd.y >= pid_kd_typical_value) {
-//        arm_pid_instance2.Kd = dynamic_Kd.y;
-//        arm_pid_init_f32(&arm_pid_instance2, 0);
-//    }
-        vec2 diff_p = aim_position - ball.position();
-        if (abs(diff_p.x) < 60.f) {
-            arm_pid_instance1.Ki = pid_ki_aim_close_typical_value;
-            arm_pid_instance1.Kd = pid_kd_aim_close_typical_value;
-            arm_pid_init_f32(&arm_pid_instance1, 0);
-        } else {
-            arm_pid_instance1.Ki = pid_ki_typical_value;
-            arm_pid_instance1.Kd = pid_kd_typical_value;
-            arm_pid_init_f32(&arm_pid_instance1, 0);
-        }
-        if (abs(diff_p.y) < 60.f) {
-            arm_pid_instance2.Ki = pid_ki_aim_close_typical_value;
-            arm_pid_instance2.Kd = pid_kd_aim_close_typical_value;
-            arm_pid_init_f32(&arm_pid_instance2, 0);
-        } else {
-            arm_pid_instance2.Ki = pid_ki_typical_value;
-            arm_pid_instance2.Kd = pid_kd_typical_value;
-            arm_pid_init_f32(&arm_pid_instance2, 0);
-        }
-    }
-
     void common_ball_move_func() {
         vec2 out_put = vec2(0.f, 0.f);
-        //∂ØÃ¨µ˜Ω⁄pid≤Œ ˝
-        refresh_pid_arg();
-        //Ω¯»Îpidµ˜Ω⁄
-        {
-            out_put.x = -arm_pid_f32(&arm_pid_instance1, aim_position.x - ball_position_sampling.x);
-            out_put.y = arm_pid_f32(&arm_pid_instance2, aim_position.y - ball_position_sampling.y);
-            //œﬁ∑˘
-            float threshold = 90.f;
-            if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f)
-                threshold = 150.f;
-            out_put.x = clamp(out_put.x, -threshold, threshold);
-            out_put.y = clamp(out_put.y, -threshold, threshold);
-        }
-        //«ø÷∆µÁª˙œÚ÷∏∂®≤Ω ˝‘À∂Ø
+        out_put.x = -arm_pid_f32(&arm_pid_instance1, aim_position.x - ball_position_sampling.x);
+        out_put.y = arm_pid_f32(&arm_pid_instance2, aim_position.y - ball_position_sampling.y);
+        //Âº∫Âà∂ÁîµÊú∫ÂêëÊåáÂÆöÊ≠•Êï∞ËøêÂä®
         step_motor_couple_t::set_next_steps(out_put, true);
         step_motor_couple_t::step();
         printf("%.3f,%.3f;\r\n", ball_position_sampling.x, ball_position_sampling.y);
     }
 
-    void ball_func_1_to_5() {
-        if (common_stop_condition_satisfied()) {
-            flat_board.dip_angle(vec2(0.f));
-            flat_board.motor();
-            is_running = false;
-            return;
-        }
-        common_ball_move_func();
+    void ball_func_1_to_5_start() {
+        ball_func = ball_func_1_5_e;
+        aim_position = POINT_1;
+        aim_position_type = aim_position_type_enter_e;
     }
 
-    void ball_func_to_2() {
-        if (common_stop_condition_satisfied()) {
-            flat_board.dip_angle(vec2(0.f));
-            flat_board.motor();
-            is_running = false;
-            return;
-        }
-        common_ball_move_func();
-    }
-
-    void ball_func_1_4_5() {
-        if (aim_position == POINT_4) {
-            if (common_stop_condition_satisfied()) {
-                flat_board.dip_angle(vec2(0.f));
-                flat_board.motor();
-                aim_position = POINT_5;
-                osDelay(1800);
-            }
+    void ball_func_1_to_5_next_aim_position() {
+        if (aim_position == POINT_1) {
+            aim_position = POINT_5;
+            aim_position_type = aim_position_type_stop_2_second_e;
         } else {
-            if (common_stop_condition_satisfied()) {
-                is_running = false;
-                return;
-            }
+            aim_position_type = aim_position_type_none_e;
         }
-        common_ball_move_func();
     }
 
-    void ball_func_1_9() {
-        if (aim_position == POINT_17) {
-            if (common_pass_condition_satisfied()) {//æ≠π˝÷–º‰µ„
-                aim_position = POINT_9;
-            }
-        } else {//point_9
-            if (common_stop_condition_satisfied()) {
-                if (!keep_running) {
-                    flat_board.dip_angle(vec2(0.f));
-                    flat_board.motor();
-                    is_running = false;
-                    return;
-                }
-            }
-        }
-        common_ball_move_func();
+    void ball_func_to_2_start() {
+        ball_func = ball_func_to_2_e;
+        aim_position = POINT_2;
+        aim_position_type = aim_position_type_stop_2_second_e;
     }
 
-    void ball_func_1_2_6_9() {
-        if (aim_position == POINT_2) {
-            if (common_enter_condition_satisfied())//Ω¯»Îpoint_2
-                aim_position = POINT_6;
+    void ball_func_to_2_next_aim_position() {
+        aim_position_type = aim_position_type_none_e;
+    }
+
+    void ball_func_1_4_5_start() {
+        ball_func = ball_func_1_4_5_e;
+        aim_position = POINT_1;
+        aim_position_type = aim_position_type_enter_e;
+    }
+
+    void ball_func_1_4_5_next_aim_position() {
+        if (aim_position == POINT_1) {
+            aim_position = POINT_4;
+            aim_position_type = aim_position_type_stop_2_second_e;
+        } else if (aim_position == POINT_4) {
+            aim_position = POINT_5;
+            aim_position_type = aim_position_type_stop_2_second_e;
+        } else {
+            aim_position_type = aim_position_type_none_e;
+        }
+    }
+
+    void ball_func_1_9_start() {
+        ball_func = ball_func_1_9_e;
+        aim_position = POINT_1;
+        aim_position_type = aim_position_type_enter_e;
+    }
+
+    void ball_func_1_9_next_aim_position() {
+        if (aim_position == POINT_1) {
+            aim_position = POINT_17;
+            aim_position_type = aim_position_type_pass_e;
+        } else if (aim_position == POINT_17) {
+            aim_position = POINT_9;
+            aim_position_type = aim_position_type_stop_2_second_e;
+        } else {
+            aim_position_type = aim_position_type_none_e;
+        }
+    }
+
+    void ball_func_1_2_6_9_start() {
+        ball_func = ball_func_1_2_6_9_e;
+        aim_position = POINT_1;
+        aim_position_type = aim_position_type_enter_e;
+    }
+
+    void ball_func_1_2_6_9_next_aim_position() {
+        if (aim_position == POINT_1) {
+            aim_position = POINT_2;
+            aim_position_type = aim_position_type_enter_e;
+        } else if (aim_position == POINT_2) {
+            aim_position = POINT_6;
+            aim_position_type = aim_position_type_enter_e;
         } else if (aim_position == POINT_6) {
-            if (common_enter_condition_satisfied())
-                aim_position = POINT_9;
-        } else if (common_stop_condition_satisfied()) {//µ÷¥Ô9
-            flat_board.dip_angle(vec2(0.f));
-            flat_board.motor();
-            is_running = false;
-            return;
+            aim_position = POINT_9;
+            aim_position_type = aim_position_type_stop_2_second_e;
+        } else {
+            aim_position_type = aim_position_type_none_e;
         }
-        common_ball_move_func();
     }
 
     vec2 two_point_interpolation(const vec2 &start, const vec2 &end) {
         vec2 vec_two_point = end - start;
         vec2 res = start + vec_two_point / 2.f;
-        if (abs(vec_two_point.x) == 400.f && abs(vec_two_point.y) == 400) {//∂‘Ω«œﬂ
+        if (abs(vec_two_point.x) == 400.f && abs(vec_two_point.y) == 400) {//ÂØπËßíÁ∫ø
             if (vec_two_point.x > 0.f) {
                 if (vec_two_point.y > 0.f) {
                     res += vec2(0, -100.f);
@@ -273,24 +242,24 @@ namespace {
                 }
             }
         } else if ((abs(vec_two_point.x) == 400.f && vec_two_point.y == 0.f)
-                   || (abs(vec_two_point.y) == 400.f && vec_two_point.x == 0.f)) {//ÀÆ∆ΩªÚ¥π÷±
+                   || (abs(vec_two_point.y) == 400.f && vec_two_point.x == 0.f)) {//Ê∞¥Âπ≥ÊàñÂûÇÁõ¥
             if (vec_two_point.x < 0.f) {
-                if (start.y > 0.f)//◊ÓÕ‚≤‡
+                if (start.y > 0.f)//ÊúÄÂ§ñ‰æß
                     res += vec2(0.f, -100.f);
                 else
                     res += vec2(0.f, 100.f);
             } else if (vec_two_point.x > 0.f) {
-                if (start.y < 0.f)//◊ÓÕ‚≤‡
+                if (start.y < 0.f)//ÊúÄÂ§ñ‰æß
                     res += vec2(0.f, 100.f);
                 else
                     res += vec2(0.f, -100.f);
             } else if (vec_two_point.y < 0.f) {
-                if (start.x < 0.f)//◊ÓÕ‚≤‡
+                if (start.x < 0.f)//ÊúÄÂ§ñ‰æß
                     res += vec2(100.f, 0.f);
                 else
                     res += vec2(-100.f, 0.f);
             } else {//y > 0.f
-                if (start.x > 0.f)//◊ÓÕ‚≤‡
+                if (start.x > 0.f)//ÊúÄÂ§ñ‰æß
                     res += vec2(-100.f, 0.f);
                 else
                     res += vec2(100.f, 0.f);
@@ -299,19 +268,18 @@ namespace {
         return res;
     }
 
-    void refresh_ball_func_a_b_c_d_state() {
+    void ball_func_a_b_c_d_start() {
         ball_func_a_b_c_d_state_index = 0;
-        //todo ∂‘abcdµ„≤Â÷µ
-        ball_func_a_b_c_d_state[1] = ball_func_a_b_c_d_state[2];
-        ball_func_a_b_c_d_state[3] = ball_func_a_b_c_d_state[4];
-        ball_func_a_b_c_d_state[5] = ball_func_a_b_c_d_state[6];
+        //todo ÂØπabcdÁÇπÊèíÂÄº
         ball_func_a_b_c_d_state[1] = two_point_interpolation(ball_func_a_b_c_d_state[0],
                                                              ball_func_a_b_c_d_state[1]);
         ball_func_a_b_c_d_state[3] = two_point_interpolation(ball_func_a_b_c_d_state[2],
                                                              ball_func_a_b_c_d_state[4]);
         ball_func_a_b_c_d_state[5] = two_point_interpolation(ball_func_a_b_c_d_state[4],
                                                              ball_func_a_b_c_d_state[6]);
-
+        ball_func = ball_func_a_b_c_d_e;
+        aim_position = ball_func_a_b_c_d_state[0];
+        aim_position_type = aim_position_type_enter_e;
         printf("ball_state:\r\n");
         printf("%f,%f;\r\n", ball_func_a_b_c_d_state[0].x, ball_func_a_b_c_d_state[0].y);
         printf("%f,%f;\r\n", ball_func_a_b_c_d_state[1].x, ball_func_a_b_c_d_state[1].y);
@@ -322,79 +290,119 @@ namespace {
         printf("%f,%f;\r\n", ball_func_a_b_c_d_state[6].x, ball_func_a_b_c_d_state[6].y);
     }
 
-    void ball_func_a_b_c_d() {
+    void ball_func_a_b_c_d_next_aim_position() {
         if (ball_func_a_b_c_d_state_index == 6) {
-            if (common_stop_condition_satisfied()) {//µ÷¥Ô÷’µ„
-                flat_board.dip_angle(vec2(0.f));
-                flat_board.motor();
-                is_running = false;
-                return;
-            }
-        } else if (ball_func_a_b_c_d_state_index == 0 || ball_func_a_b_c_d_state_index == 2 ||
-                   ball_func_a_b_c_d_state_index == 4) {
-            if (common_enter_condition_satisfied()) {
-                arm_pid_reset_f32(&arm_pid_instance1);
-                arm_pid_reset_f32(&arm_pid_instance2);
-                ++ball_func_a_b_c_d_state_index;
-                aim_position = ball_func_a_b_c_d_state[ball_func_a_b_c_d_state_index];
-            }
-        } else if (ball_func_a_b_c_d_state_index == 1 || ball_func_a_b_c_d_state_index == 3 ||
-                   ball_func_a_b_c_d_state_index == 5) {
-            if (common_pass_condition_satisfied()) {
-                arm_pid_reset_f32(&arm_pid_instance1);
-                arm_pid_reset_f32(&arm_pid_instance2);
-                ++ball_func_a_b_c_d_state_index;
-                aim_position = ball_func_a_b_c_d_state[ball_func_a_b_c_d_state_index];
+            aim_position_type = aim_position_type_none_e;
+        } else {
+            ++ball_func_a_b_c_d_state_index;
+            aim_position = ball_func_a_b_c_d_state[ball_func_a_b_c_d_state_index];
+            if (ball_func_a_b_c_d_state_index == 2 || ball_func_a_b_c_d_state_index == 4) {
+                aim_position_type = aim_position_type_enter_e;
+            } else if (ball_func_a_b_c_d_state_index == 1 || ball_func_a_b_c_d_state_index == 3 ||
+                       ball_func_a_b_c_d_state_index == 5) {
+                aim_position_type = aim_position_type_pass_e;
+            } else/* 6 */{
+                aim_position_type = aim_position_type_stop_2_second_e;
             }
         }
-        common_ball_move_func();
     }
 
-    void ball_func_circle() {
-        if (aim_position == POINT_9) {//µ÷¥Ô÷’µ„
-            if (common_stop_condition_satisfied()) {
-                flat_board.dip_angle(vec2(0.f));
-                flat_board.motor();
-                is_running = false;
-                return;
-            }
-        } else if (aim_position == POINT_4) {//¥”∆µ„≥ˆ∑¢
-            if (common_enter_condition_satisfied())
-                aim_position = POINT_14;
-        } else if (aim_position == POINT_14) {//‘≤…œµ⁄“ª∏ˆµ„
-            if (common_pass_condition_satisfied())
-                aim_position = POINT_20;
-        } else if (aim_position == POINT_20) {//‘≤…œµ⁄∂˛∏ˆµ„
-            if (common_pass_condition_satisfied())
-                aim_position = POINT_11;
-        } else if (aim_position == POINT_11) {//‘≤…œµ⁄»˝∏ˆµ„
-            if (common_pass_condition_satisfied())
-                aim_position = POINT_17;
-        } else if (aim_position == POINT_17) {//‘≤…œµ⁄Àƒ∏ˆµ„
-            if (common_pass_condition_satisfied()) {
+    void ball_func_circle_start() {
+        ball_func = ball_func_circle_e;
+        ball_func_circle_state = 0;
+        aim_position = POINT_4;
+        aim_position_type = aim_position_type_enter_e;
+    }
+
+    void ball_func_circle_next_aim_position() {
+        if (aim_position == POINT_9) {//ÊäµËææÁªàÁÇπ
+            aim_position_type = aim_position_type_none_e;
+        } else if (aim_position == POINT_4) {//‰ªéËµ∑ÁÇπÂá∫Âèë
+            aim_position = POINT_14;
+            aim_position_type = aim_position_type_pass_e;
+        } else if (aim_position == POINT_14) {//ÂúÜ‰∏äÁ¨¨‰∏Ä‰∏™ÁÇπ
+            aim_position = POINT_20;
+        } else if (aim_position == POINT_20) {//ÂúÜ‰∏äÁ¨¨‰∫å‰∏™ÁÇπ
+            aim_position = POINT_11;
+        } else if (aim_position == POINT_11) {//ÂúÜ‰∏äÁ¨¨‰∏â‰∏™ÁÇπ
+            aim_position = POINT_17;
+        } else if (aim_position == POINT_17) {//ÂúÜ‰∏äÁ¨¨Âõõ‰∏™ÁÇπ
                 ++ball_func_circle_state;
-                if (ball_func_circle_state == 3) {//»˝»¶ÕÍ≥…
+                if (ball_func_circle_state == 3) {//‰∏âÂúàÂÆåÊàê
                     ball_func_circle_state = 0;
                     aim_position = POINT_9;
+                    aim_position_type = aim_position_type_stop_2_second_e;
                 } else {
-                    aim_position = POINT_14;//Ω¯»Îœ¬“ª»¶
+                    aim_position = POINT_14;//ËøõÂÖ•‰∏ã‰∏ÄÂúà
                 }
-            }
         }
-        common_ball_move_func();
     }
 
 }
-bool code_type_1 = true;
 
-void pid_init_1(){}
-void pid_loop_1(){
-    osThreadYield();
-}
-void key_board_init_1(){
 
+void pid_init_2() {}
+
+void pid_loop_2() {
+    static int last_condition_satisfied_time_ms = -1;
+    static int last_ball_position_sampling_index = 0;
+    if (last_ball_position_sampling_index == ball_position_sampling_index) {
+        //todo
+        bool condition_satisfied = false;
+        if (aim_position_type == aim_position_type_stop_2_second_e) {
+            if(common_stop_condition_satisfied()){
+                condition_satisfied = true;
+                printf("stop at %.3f,%.3f\r\n",aim_position.x,aim_position.y);
+            }
+        } else if (aim_position_type == aim_position_type_enter_e) {
+            if(common_enter_condition_satisfied()){
+                condition_satisfied = true;
+                printf("enter %.3f,%.3f\r\n",aim_position.x,aim_position.y);
+            }
+        } else if (aim_position_type == aim_position_type_pass_e) {
+            if(common_pass_condition_satisfied()){
+                condition_satisfied = true;
+                printf("pass %.3f,%.3f\r\n",aim_position.x,aim_position.y);
+            }
+        }
+        if (condition_satisfied) {
+            switch (ball_func) {
+                case ball_func_1_5_e:
+                    ball_func_1_to_5_next_aim_position();
+                    break;
+                case ball_func_to_2_e:
+                    ball_func_to_2_next_aim_position();
+                    break;
+                case ball_func_1_4_5_e:
+                    ball_func_1_4_5_next_aim_position();
+                    break;
+                case ball_func_1_9_e:
+                    ball_func_1_9_next_aim_position();
+                    break;
+                case ball_func_1_2_6_9_e:
+                    ball_func_1_2_6_9_next_aim_position();
+                    break;
+                case ball_func_a_b_c_d_e:
+                    ball_func_a_b_c_d_next_aim_position();
+                    break;
+                case ball_func_circle_e:
+                    ball_func_circle_next_aim_position();
+                    break;
+            }
+            printf("new aim %.3f,%.3f\r\n",aim_position.x,aim_position.y);
+        }
+    } else {
+        refresh_ball_state();
+        if(keep_running){
+            common_ball_move_func();
+        }
+        last_ball_position_sampling_index = ball_position_sampling_index;
+    }
 }
-void key_board_loop_1(){
+
+void key_board_init_2() {}
+
+void key_board_loop_2() {
     static int old_key = -1;
     static int delay_count = 0;
     key_board_t::key_board_e key = key_board_t::scan();
@@ -458,13 +466,7 @@ void key_board_loop_1(){
             case key_board_t::key_board_c_e:
                 break;
             case key_board_t::key_board_d_e:
-                ball_func = ball_func_a_b_c_d_e;
-                refresh_ball_func_a_b_c_d_state();
-                aim_position = ball_func_a_b_c_d_state[0];
-                aim_position_threshold = vec2(10.f);
-                arm_pid_reset_f32(&arm_pid_instance1);
-                arm_pid_reset_f32(&arm_pid_instance2);
-                is_running = true;
+                ball_func_a_b_c_d_start();
                 get_point_a_b_c_d = false;
                 break;
             case key_board_t::key_board_e_e:
@@ -483,9 +485,14 @@ void key_board_loop_1(){
     } else
         switch (key) {
             case key_board_t::key_board_0_e:
-                is_running = false;
+                if(keep_running){
+                    keep_running = false;
+                }else{
+                    keep_running = true;
+                }
                 get_point_a_b_c_d = false;
-                aim_position_threshold = vec2(10.f);
+                aim_position_type = aim_position_type_none_e;
+                aim_position = ball_position_sampling;
                 arm_pid_reset_f32(&arm_pid_instance1);
                 arm_pid_reset_f32(&arm_pid_instance2);
                 flat_board.set_base();
@@ -506,12 +513,12 @@ void key_board_loop_1(){
                 break;
             }
             case key_board_t::key_board_3_e:
-                if(code_type_1){
+                if (code_type_1) {
                     main_init_2();
                     pid_init_2();
                     key_board_init_2();
                     code_type_1 = false;
-                }else{
+                } else {
                     main_init_1();
                     pid_init_1();
                     key_board_init_1();
@@ -538,34 +545,19 @@ void key_board_loop_1(){
             case key_board_t::key_board_7_e:
                 break;
             case key_board_t::key_board_8_e:
-                ball_func = ball_func_to_2_e;
-                aim_position = POINT_2;
-                aim_position_threshold = vec2(10.f);
-                is_running = true;
+                ball_func_to_2_start();
                 break;
             case key_board_t::key_board_9_e:
-                ball_func = ball_func_1_5_e;
-                aim_position = POINT_5;
-                aim_position_threshold = vec2(10.f);
-                is_running = true;
+                ball_func_1_to_5_start();
                 break;
             case key_board_t::key_board_a_e:
-                ball_func = ball_func_1_4_5_e;
-                aim_position = POINT_4;
-                aim_position_threshold = vec2(10.f);
-                is_running = true;
+                ball_func_1_4_5_start();
                 break;
             case key_board_t::key_board_b_e:
-                ball_func = ball_func_1_9_e;
-                aim_position = POINT_17;
-                aim_position_threshold = vec2(30.f);
-                is_running = true;
+                ball_func_1_9_start();
                 break;
             case key_board_t::key_board_c_e:
-                ball_func = ball_func_1_2_6_9_e;
-                aim_position = POINT_2;
-                aim_position_threshold = vec2(10.f);
-                is_running = true;
+                ball_func_1_2_6_9_start();
                 break;
             case key_board_t::key_board_d_e:
                 if (get_point_a_b_c_d == false) {
@@ -573,26 +565,23 @@ void key_board_loop_1(){
                 }
                 break;
             case key_board_t::key_board_e_e:
-                ball_func = ball_func_circle_e;
-                ball_func_circle_state = 0;
-                aim_position = POINT_4;
-                aim_position_threshold = vec2(10.f);
-                is_running = true;
+                ball_func_circle_start();
                 break;
             case key_board_t::key_board_f_e:
                 break;
             default:
                 break;
         }
-    if(key != key_board_t::key_board_none_e){
+    if (key != key_board_t::key_board_none_e) {
         led0_t::on();
         osDelay(10);
         led0_t::off();
-    }else{
+    } else {
         osDelay(30);
     }
 }
-void main_init_1(){
+
+void main_init_2() {
     arm_pid_instance1.Kp = pid_kp_typical_vlaue;
     arm_pid_instance1.Ki = pid_ki_typical_value;
     arm_pid_instance1.Kd = pid_kd_typical_value;
@@ -606,54 +595,27 @@ void main_init_1(){
     led0_t::on();
     osDelay(100);
     led0_t::off();
+    osDelay(100);
+    led0_t::on();
+    osDelay(100);
+    led0_t::off();
 }
-void main_loop_1()
-{
+
+void main_loop_2() {
     static char ch[128];
     if (!uart1_have_data_to_read()) {
         osThreadYield();
     }
     scanf("%s", ch);
     if (strcmp(ch, "ball") == 0) {
-        int scanf_res = scanf("%f%f", &ball_position_sampling.x, &ball_position_sampling.y);
+        vec2 ball_position_sampling_tmp;
+        int scanf_res = scanf("%f%f", &ball_position_sampling_tmp.x, &ball_position_sampling_tmp.y);
         if (scanf_res != 2) {
             return;
         }
-        refresh_ball_state();
-        if (is_running) {
-            switch (ball_func) {
-                case ball_func_1_5_e:
-                    ball_func_1_to_5();
-                    break;
-                case ball_func_to_2_e:
-                    ball_func_to_2();
-                    break;
-                case ball_func_1_4_5_e:
-                    ball_func_1_4_5();
-                    break;
-                case ball_func_1_9_e:
-                    ball_func_1_9();
-                    break;
-                case ball_func_1_2_6_9_e:
-                    ball_func_1_2_6_9();
-                    break;
-                case ball_func_a_b_c_d_e:
-                    ball_func_a_b_c_d();
-                    break;
-                case ball_func_circle_e:
-                    ball_func_circle();
-                    break;
-            }
-        }
-//            printf("get data:%f %f\r\n", ball_position_sampling.x,ball_position_sampling.y);
-    }
-//        else if (strcmp(ch, "red") == 0) {
-//            float red_point_position;
-//            scanf("%f", &red_point_position);
-//            if (ball_func == ball_func_follow_red_e || ball_func == ball_func_follow_red_2_e)
-//                aim_position = red_point_position;
-//        }
-    else if (strcmp(ch, "test") == 0) {
+        ball_position_sampling = ball_position_sampling_tmp;
+        ++ball_position_sampling_index;
+    } else if (strcmp(ch, "test") == 0) {
         float dip_angle, height;
         scanf("%f%f", &dip_angle, &height);
         printf("test:%f %f\r\n", dip_angle, height);
@@ -667,37 +629,6 @@ void main_loop_1()
 //            }
     } else {
         //printf("unknown func:%s\r\n", ch);
-    }
-}
-extern "C" void key_board_task(const void *) {
-    for (;;) {
-        if(code_type_1)
-            key_board_loop_1();
-        else
-            key_board_loop_2();
-    }
-}
-
-
-extern "C" void pid_task(const void *) {
-    for(;;) {
-        if(code_type_1)
-            pid_loop_1();
-        else
-            pid_loop_2();
-    }
-}
-
-extern "C" void main_task(const void *) {
-    //default 1
-    main_init_1();
-    pid_init_1();
-    key_board_init_1();
-    for (;;) {
-        if(code_type_1)
-            main_loop_1();
-        else
-            main_loop_2();
     }
 }
 
