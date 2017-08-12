@@ -59,7 +59,8 @@ namespace {
     point_on_canvas_t top_point_on_canvas;
     point_on_canvas_t bottom_point_on_canvas;
     point_on_canvas_t ball_point_on_canvas;
-
+    point_on_canvas_t bright_point_on_canvas;
+    
     enum color_type_e {
         color_type_common_e = 0,
         color_type_red_e,
@@ -109,7 +110,7 @@ namespace {
         if (y < 70) {
             return color_type_black_e;
         }
-        if (y > 195) {
+        if (y > 240) {
             return color_type_bright_e;
         }
         return color_type_common_e;
@@ -122,6 +123,7 @@ extern "C" u16 *rgb_buffer;
 extern "C" u8 draw_frame_on_lcd;
 extern "C" void on_frame_got(u8 adjust_base_point) {
     ball_point_on_canvas.restart_record();
+    bright_point_on_canvas.restart_record();
     if (adjust_base_point) {
         left_point_on_canvas.restart_record();
         right_point_on_canvas.restart_record();
@@ -184,6 +186,7 @@ extern "C" void on_frame_got(u8 adjust_base_point) {
                         }
                     break;
                 case color_type_bright_e:
+                    bright_point_on_canvas.record(ivec2(x,y));
                     break;
                 default:
             }
@@ -208,6 +211,7 @@ extern "C" void on_frame_got(u8 adjust_base_point) {
                         }
                     break;
                 case color_type_bright_e:
+                    bright_point_on_canvas.record(ivec2(x + 1,y));
                     break;
                 default:
             }
@@ -215,6 +219,7 @@ extern "C" void on_frame_got(u8 adjust_base_point) {
     }
 
     vec2 ball = ball_point_on_canvas.get_position(0);
+    vec2 bright = bright_point_on_canvas.get_position(0);
     vec2 top = top_point_on_canvas.get_position();
     vec2 bottom = bottom_point_on_canvas.get_position();
     vec2 left = left_point_on_canvas.get_position();
@@ -239,8 +244,22 @@ extern "C" void on_frame_got(u8 adjust_base_point) {
             ball_y_pixel = vec_cross_z / right_left_pixel;
             ball_x = 400.0f / right_left_pixel * ball_x_pixel;
             ball_y = 400.0f / top_bottom_pixel * ball_y_pixel;
-
             printf("ball %.3f %.3f\r\n", ball_x, ball_y);
+            if(bright.x > 0&& bright.y > 0){
+                vec2 vec_bright_bottom = bright - bottom;
+                vec2 vec_bright_left = bright - left;
+                float bright_x_pixel;
+                float bright_y_pixel;
+                float bright_x;
+                float bright_y;
+                vec_cross_z = vec_bright_bottom.x * vec_top_bottom.y - vec_bright_bottom.y * vec_top_bottom.x;
+                bright_x_pixel = vec_cross_z / top_bottom_pixel;
+                vec_cross_z = vec_right_left.x * vec_bright_left.y - vec_right_left.y * vec_bright_left.x;
+                bright_y_pixel = vec_cross_z / right_left_pixel;
+                bright_x = 400.0f / right_left_pixel * bright_x_pixel;
+                bright_y = 400.0f / top_bottom_pixel * bright_y_pixel;
+                printf("bright %.3f %.3f\r\n", bright_x, bright_y);
+            }
         }
     }
 
@@ -256,6 +275,8 @@ extern "C" void on_frame_got(u8 adjust_base_point) {
         LCD_ShowString(0, 264, 200, 300, 16, (u8 *) msg);
         sprintf(msg, "right=(%.3f,%.3f)", right.x, right.y);
         LCD_ShowString(0, 280, 200, 300, 16, (u8 *) msg);
+        sprintf(msg, "bright=(%.3f,%.3f)", bright.x, bright.y);
+        LCD_ShowString(0, 296, 200, 300, 16, (u8 *) msg);
 
         LCD_Set_Window(200, 0, 200, 200);
         LCD_WriteRAM_Prepare();        //¿ªÊ¼Ð´ÈëGRAM
