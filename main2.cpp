@@ -38,10 +38,14 @@ namespace {
     vec2 aim_position_enter_threshold = vec2(15.f);
     vec2 aim_position_pass_threshold = vec2(30.f);
 
-    float pid_kp_typical_vlaue = 1.f;
-    float pid_ki_typical_value = 0.01f;
-    float pid_kd_typical_value = 24.f;
-
+//    float pid_kp_typical_vlaue = 1.f;
+//    float pid_ki_typical_value = 0.01f;
+//    float pid_kd_typical_value = 24.f;
+    float pid_kp_typical_vlaue = 3.f;
+    float pid_ki_typical_value = 0.003f;
+    float pid_kd_typical_value = 60.f;
+    float pid_ki_aim_close_typical_value = 0.05f;
+    float pid_kd_aim_close_typical_value = 60.f;
     arm_pid_instance_f32 arm_pid_instance1;
     arm_pid_instance_f32 arm_pid_instance2;
     arm_fir_instance_f32 arm_fir_instance1;
@@ -109,9 +113,7 @@ namespace {
     bool common_stop_condition_satisfied() {
         if (abs(ball_position_sampling.x - aim_position.x) < aim_position_stop_threshold.x
             && abs(ball_position_sampling.y - aim_position.y) < aim_position_stop_threshold.y) {
-            if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f) {
-                return true;
-            }
+            return true;
         }
         return false;
     }
@@ -132,14 +134,64 @@ namespace {
         return false;
     }
 
+    void refresh_pid_arg() {
+//    //根据距离的Kd
+//    vec2 dynamic_Kd = /*diff_p / 6.f*/(aim_position - ball_position_sampling) / 200.f * pid_kd_typical_value;
+//    //abs
+//    if (dynamic_Kd.x < 0.f)
+//        dynamic_Kd.x = -dynamic_Kd.x;
+//    if (dynamic_Kd.y < 0.f)
+//        dynamic_Kd.y = -dynamic_Kd.y;
+//    //Kd不能太小
+//    //使pid参数修改生效
+//    if (dynamic_Kd.x >= pid_kd_typical_value) {
+//        arm_pid_instance1.Kd = dynamic_Kd.x;
+//        arm_pid_init_f32(&arm_pid_instance1, 0);
+//    }
+//    if (dynamic_Kd.y >= pid_kd_typical_value) {
+//        arm_pid_instance2.Kd = dynamic_Kd.y;
+//        arm_pid_init_f32(&arm_pid_instance2, 0);
+//    }
+        vec2 diff_p = aim_position - ball.position();
+        if (abs(diff_p.x) < 60.f) {
+            arm_pid_instance1.Ki = pid_ki_aim_close_typical_value;
+            arm_pid_instance1.Kd = pid_kd_aim_close_typical_value;
+            arm_pid_init_f32(&arm_pid_instance1, 0);
+        } else {
+            arm_pid_instance1.Ki = pid_ki_typical_value;
+            arm_pid_instance1.Kd = pid_kd_typical_value;
+            arm_pid_init_f32(&arm_pid_instance1, 0);
+        }
+        if (abs(diff_p.y) < 60.f) {
+            arm_pid_instance2.Ki = pid_ki_aim_close_typical_value;
+            arm_pid_instance2.Kd = pid_kd_aim_close_typical_value;
+            arm_pid_init_f32(&arm_pid_instance2, 0);
+        } else {
+            arm_pid_instance2.Ki = pid_ki_typical_value;
+            arm_pid_instance2.Kd = pid_kd_typical_value;
+            arm_pid_init_f32(&arm_pid_instance2, 0);
+        }
+    }
+
     void common_ball_move_func() {
         vec2 out_put = vec2(0.f, 0.f);
-        out_put.x = -arm_pid_f32(&arm_pid_instance1, aim_position.x - ball_position_sampling.x);
-        out_put.y = arm_pid_f32(&arm_pid_instance2, aim_position.y - ball_position_sampling.y);
+        //动态调节pid参数
+        refresh_pid_arg();
+        //进入pid调节
+        {
+            out_put.x = -arm_pid_f32(&arm_pid_instance1, aim_position.x - ball_position_sampling.x);
+            out_put.y = arm_pid_f32(&arm_pid_instance2, aim_position.y - ball_position_sampling.y);
+            //限幅
+            float threshold = 90.f;
+            if (abs(ball.v().x) < 20.f && abs(ball.v().y) < 20.f)
+                threshold = 150.f;
+            out_put.x = clamp(out_put.x, -threshold, threshold);
+            out_put.y = clamp(out_put.y, -threshold, threshold);
+        }
         //强制电机向指定步数运动
         step_motor_couple_t::set_next_steps(out_put, true);
         step_motor_couple_t::step();
-        printf("%.3f,%.3f;\r\n", ball_position_sampling.x, ball_position_sampling.y);
+        //printf("%.3f,%.3f;\r\n", ball_position_sampling.x, ball_position_sampling.y);
     }
 
     void ball_func_1_to_5_start() {
@@ -272,7 +324,7 @@ namespace {
         ball_func_a_b_c_d_state_index = 0;
         //todo 对abcd点插值
         ball_func_a_b_c_d_state[1] = two_point_interpolation(ball_func_a_b_c_d_state[0],
-                                                             ball_func_a_b_c_d_state[1]);
+                                                             ball_func_a_b_c_d_state[2]);
         ball_func_a_b_c_d_state[3] = two_point_interpolation(ball_func_a_b_c_d_state[2],
                                                              ball_func_a_b_c_d_state[4]);
         ball_func_a_b_c_d_state[5] = two_point_interpolation(ball_func_a_b_c_d_state[4],
@@ -327,14 +379,14 @@ namespace {
         } else if (aim_position == POINT_11) {//圆上第三个点
             aim_position = POINT_17;
         } else if (aim_position == POINT_17) {//圆上第四个点
-                ++ball_func_circle_state;
-                if (ball_func_circle_state == 3) {//三圈完成
-                    ball_func_circle_state = 0;
-                    aim_position = POINT_9;
-                    aim_position_type = aim_position_type_stop_2_second_e;
-                } else {
-                    aim_position = POINT_14;//进入下一圈
-                }
+            ++ball_func_circle_state;
+            if (ball_func_circle_state == 3) {//三圈完成
+                ball_func_circle_state = 0;
+                aim_position = POINT_9;
+                aim_position_type = aim_position_type_stop_2_second_e;
+            } else {
+                aim_position = POINT_14;//进入下一圈
+            }
         }
     }
 
@@ -350,19 +402,26 @@ void pid_loop_2() {
         //todo
         bool condition_satisfied = false;
         if (aim_position_type == aim_position_type_stop_2_second_e) {
-            if(common_stop_condition_satisfied()){
-                condition_satisfied = true;
-                printf("stop at %.3f,%.3f\r\n",aim_position.x,aim_position.y);
+            if (common_stop_condition_satisfied()) {
+                if (last_condition_satisfied_time_ms == -1) {
+                    last_condition_satisfied_time_ms = osKernelSysTick();
+                } else {
+                    if (osKernelSysTick() - last_condition_satisfied_time_ms > 1700) {
+                        condition_satisfied = true;
+                        flat_board.dip_angle(vec2(0.f));
+                        flat_board.motor();
+                    }
+                }
+            } else {
+                last_condition_satisfied_time_ms = -1;
             }
         } else if (aim_position_type == aim_position_type_enter_e) {
-            if(common_enter_condition_satisfied()){
+            if (common_enter_condition_satisfied()) {
                 condition_satisfied = true;
-                printf("enter %.3f,%.3f\r\n",aim_position.x,aim_position.y);
             }
         } else if (aim_position_type == aim_position_type_pass_e) {
-            if(common_pass_condition_satisfied()){
+            if (common_pass_condition_satisfied()) {
                 condition_satisfied = true;
-                printf("pass %.3f,%.3f\r\n",aim_position.x,aim_position.y);
             }
         }
         if (condition_satisfied) {
@@ -389,11 +448,11 @@ void pid_loop_2() {
                     ball_func_circle_next_aim_position();
                     break;
             }
-            printf("new aim %.3f,%.3f\r\n",aim_position.x,aim_position.y);
+            printf("new aim %.3f,%.3f\r\n", aim_position.x, aim_position.y);
         }
     } else {
         refresh_ball_state();
-        if(keep_running){
+        if (keep_running && aim_position_type != aim_position_type_none_e) {
             common_ball_move_func();
         }
         last_ball_position_sampling_index = ball_position_sampling_index;
@@ -485,11 +544,6 @@ void key_board_loop_2() {
     } else
         switch (key) {
             case key_board_t::key_board_0_e:
-                if(keep_running){
-                    keep_running = false;
-                }else{
-                    keep_running = true;
-                }
                 get_point_a_b_c_d = false;
                 aim_position_type = aim_position_type_none_e;
                 aim_position = ball_position_sampling;
