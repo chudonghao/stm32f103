@@ -71,6 +71,7 @@ namespace {
     ball_func_e ball_func;
     bool keep_running = false;
     bool get_point_a_b_c_d = false;
+    bool ball_func_follow_bright = false;
     int ball_func_a_b_c_d_state_index = 0;
     vec2 ball_func_a_b_c_d_state[7];
     int ball_func_circle_state = 0;
@@ -405,15 +406,20 @@ void pid_loop_2() {
             if (common_stop_condition_satisfied()) {
                 if (last_condition_satisfied_time_ms == -1) {
                     last_condition_satisfied_time_ms = osKernelSysTick();
+                    printf("hint\r\n");
                 } else {
                     if (osKernelSysTick() - last_condition_satisfied_time_ms > 1700) {
                         condition_satisfied = true;
                         flat_board.dip_angle(vec2(0.f));
                         flat_board.motor();
+                        printf("stop\r\n");
                     }
                 }
             } else {
-                last_condition_satisfied_time_ms = -1;
+                if(last_condition_satisfied_time_ms > 0){
+                    printf("stop\r\n");
+                    last_condition_satisfied_time_ms = -1;
+                }
             }
         } else if (aim_position_type == aim_position_type_enter_e) {
             if (common_enter_condition_satisfied()) {
@@ -448,11 +454,12 @@ void pid_loop_2() {
                     ball_func_circle_next_aim_position();
                     break;
             }
-            printf("new aim %.3f,%.3f\r\n", aim_position.x, aim_position.y);
         }
     } else {
         refresh_ball_state();
         if (keep_running && aim_position_type != aim_position_type_none_e) {
+            common_ball_move_func();
+        }else if(keep_running && ball_func_follow_bright){
             common_ball_move_func();
         }
         last_ball_position_sampling_index = ball_position_sampling_index;
@@ -622,6 +629,13 @@ void key_board_loop_2() {
                 ball_func_circle_start();
                 break;
             case key_board_t::key_board_f_e:
+                if(ball_func_follow_bright){
+                    ball_func_follow_bright = false;
+                    aim_position_type = aim_position_type_none_e;
+                }else{
+                    ball_func_follow_bright = true;
+                    aim_position_type = aim_position_type_enter_e;
+                }
                 break;
             default:
                 break;
@@ -681,7 +695,12 @@ void main_loop_2() {
 //            while (track.motor() == -1) {
 //                step_motor_couple_t::step();
 //            }
-    } else {
+    } else if(strcmp(ch,"bright") == 0){
+        vec2 tmp;
+        int scanf_res = scanf("%f%f", &tmp.x, &tmp.y);
+        if(scanf_res == 2 && ball_func_follow_bright){
+            aim_position = tmp;
+        }
         //printf("unknown func:%s\r\n", ch);
     }
 }
