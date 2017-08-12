@@ -615,10 +615,16 @@ void main_loop_1()
     }
     scanf("%s", ch);
     if (strcmp(ch, "ball") == 0) {
-        int scanf_res = scanf("%f%f", &ball_position_sampling.x, &ball_position_sampling.y);
+        vec2 ball_position_sampling_tmp;
+        int scanf_res = scanf("%f%f", &ball_position_sampling_tmp.x, &ball_position_sampling_tmp.y);
         if (scanf_res != 2) {
             return;
         }
+        if (ball_position_sampling_tmp.x >= 150.f && ball_position_sampling_tmp.y < -150.f) {
+            ball_position_sampling_tmp.x += 5.f;
+            ball_position_sampling_tmp.y -= 5.f;
+        }
+        ball_position_sampling = ball_position_sampling_tmp;
         refresh_ball_state();
         if (is_running) {
             switch (ball_func) {

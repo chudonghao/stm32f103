@@ -94,8 +94,11 @@ namespace cdh {
         int motor(){
             int res;
             vec2 length;
+//            vec2 dip_angle_fix;
             length.x = tan(dip_angle_.x) * distance_motors_and_zero.x;
             length.y = tan(dip_angle_.y) * distance_motors_and_zero.y;
+
+
             ivec2 steps = step_motor_couple_t::map_length_to_steps(length);
             res = step_motor_couple_t::set_next_steps(steps, true);
             step_motor_couple_t::step();
